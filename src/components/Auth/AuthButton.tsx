@@ -1,4 +1,4 @@
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const AuthButton = () => {
   const { user, signInWithGoogle, signOut } = useAuth();

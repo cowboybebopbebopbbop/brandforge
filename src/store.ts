@@ -73,6 +73,8 @@ interface AppState {
   toggleFavorite: (name: GeneratedName) => void;
 }
 
+export type { AppState };
+
 const createDefaultTab = (id: string, name: string): TabData => ({
   id,
   name,

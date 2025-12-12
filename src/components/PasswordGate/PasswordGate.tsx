@@ -4,7 +4,7 @@ interface PasswordGateProps {
   children: React.ReactNode;
 }
 
-const CORRECT_PASSWORD = import.meta.env.VITE_ACCESS_PASSWORD || "brandforge2024";
+const CORRECT_PASSWORD = (import.meta.env.VITE_ACCESS_PASSWORD as string | undefined) || "brandforge2024";
 const STORAGE_KEY = "brandforge_access_granted";
 
 export function PasswordGate({ children }: PasswordGateProps) {

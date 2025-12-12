@@ -38,8 +38,8 @@ export const useFirebaseSync = () => {
           // Update store with cloud data
           if (syncedData.tabs) {
             // Replace all tabs with cloud tabs
-            store.tabs.forEach(tab => store.removeTab(tab.id));
-            syncedData.tabs.forEach(tab => {
+            store.tabs.forEach((tab: any) => store.removeTab(tab.id));
+            syncedData.tabs.forEach((tab: any) => {
               store.addTab();
               const lastTab = store.tabs[store.tabs.length - 1];
               store.updateTab(lastTab.id, tab);
@@ -52,10 +52,10 @@ export const useFirebaseSync = () => {
 
           if (syncedData.favoritedNames) {
             // Clear and reload favorites
-            store.favoritedNames.forEach(fav => 
+            store.favoritedNames.forEach((fav: any) => 
               store.removeFromFavorites(fav.name)
             );
-            syncedData.favoritedNames.forEach(fav => 
+            syncedData.favoritedNames.forEach((fav: any) => 
               store.addToFavorites(fav)
             );
           }
