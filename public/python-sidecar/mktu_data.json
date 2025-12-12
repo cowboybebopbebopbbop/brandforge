@@ -1,0 +1,274 @@
+{
+  "classes": [
+    {
+      "number": 1,
+      "name_ru": "Химические продукты для промышленных, научных целей",
+      "name_en": "Chemicals for industrial and scientific purposes",
+      "keywords": ["chemicals", "industrial", "science", "химия", "промышленность", "наука"]
+    },
+    {
+      "number": 2,
+      "name_ru": "Краски, лаки, защитные покрытия",
+      "name_en": "Paints, varnishes, lacquers, preservatives",
+      "keywords": ["paint", "varnish", "coating", "краска", "лак", "покрытие"]
+    },
+    {
+      "number": 3,
+      "name_ru": "Косметика, средства для чистки, парфюмерия",
+      "name_en": "Cosmetics, cleaning preparations, perfumery",
+      "keywords": ["cosmetics", "beauty", "perfume", "cleaning", "косметика", "парфюм", "чистка"]
+    },
+    {
+      "number": 4,
+      "name_ru": "Масла, смазки, топливо, свечи",
+      "name_en": "Industrial oils, lubricants, fuels, candles",
+      "keywords": ["oil", "fuel", "lubricant", "candle", "масло", "топливо", "свечи"]
+    },
+    {
+      "number": 5,
+      "name_ru": "Фармацевтика, медицинские препараты",
+      "name_en": "Pharmaceuticals, medical preparations",
+      "keywords": ["pharma", "medicine", "medical", "health", "фармацевтика", "медицина", "здоровье"]
+    },
+    {
+      "number": 6,
+      "name_ru": "Металлы и металлические изделия",
+      "name_en": "Common metals and their alloys",
+      "keywords": ["metal", "steel", "iron", "aluminum", "металл", "сталь", "железо"]
+    },
+    {
+      "number": 7,
+      "name_ru": "Машины и станки",
+      "name_en": "Machines, machine tools, motors",
+      "keywords": ["machine", "motor", "engine", "станок", "машина", "двигатель"]
+    },
+    {
+      "number": 8,
+      "name_ru": "Ручные инструменты",
+      "name_en": "Hand tools and implements",
+      "keywords": ["tools", "hand tools", "cutlery", "инструменты", "ножи"]
+    },
+    {
+      "number": 9,
+      "name_ru": "Электроника, компьютеры, программы",
+      "name_en": "Electronics, computers, software",
+      "keywords": ["electronics", "computer", "software", "app", "tech", "электроника", "компьютер", "программа", "технологии"]
+    },
+    {
+      "number": 10,
+      "name_ru": "Медицинское оборудование",
+      "name_en": "Medical apparatus and instruments",
+      "keywords": ["medical equipment", "surgical", "diagnostic", "медоборудование", "хирургия"]
+    },
+    {
+      "number": 11,
+      "name_ru": "Освещение, отопление, сантехника",
+      "name_en": "Lighting, heating, sanitary installations",
+      "keywords": ["lighting", "heating", "plumbing", "освещение", "отопление", "сантехника"]
+    },
+    {
+      "number": 12,
+      "name_ru": "Транспортные средства",
+      "name_en": "Vehicles, apparatus for locomotion",
+      "keywords": ["vehicle", "car", "transport", "автомобиль", "транспорт", "машина"]
+    },
+    {
+      "number": 13,
+      "name_ru": "Огнестрельное оружие, боеприпасы",
+      "name_en": "Firearms, ammunition, explosives",
+      "keywords": ["weapons", "firearms", "ammunition", "оружие", "боеприпасы"]
+    },
+    {
+      "number": 14,
+      "name_ru": "Ювелирные изделия, часы",
+      "name_en": "Precious metals, jewelry, watches",
+      "keywords": ["jewelry", "watches", "gold", "silver", "ювелирные изделия", "часы", "золото"]
+    },
+    {
+      "number": 15,
+      "name_ru": "Музыкальные инструменты",
+      "name_en": "Musical instruments",
+      "keywords": ["music", "instruments", "musical", "музыка", "инструменты"]
+    },
+    {
+      "number": 16,
+      "name_ru": "Бумага, печатная продукция, канцелярия",
+      "name_en": "Paper, printed matter, stationery",
+      "keywords": ["paper", "printing", "stationery", "office", "бумага", "печать", "канцелярия"]
+    },
+    {
+      "number": 17,
+      "name_ru": "Резина, пластмасса, изоляционные материалы",
+      "name_en": "Rubber, plastics, insulating materials",
+      "keywords": ["rubber", "plastic", "insulation", "резина", "пластик", "изоляция"]
+    },
+    {
+      "number": 18,
+      "name_ru": "Кожа, сумки, чемоданы",
+      "name_en": "Leather, bags, luggage",
+      "keywords": ["leather", "bags", "luggage", "кожа", "сумки", "чемоданы"]
+    },
+    {
+      "number": 19,
+      "name_ru": "Строительные материалы",
+      "name_en": "Building materials, construction",
+      "keywords": ["construction", "building", "materials", "строительство", "материалы"]
+    },
+    {
+      "number": 20,
+      "name_ru": "Мебель, зеркала, рамы",
+      "name_en": "Furniture, mirrors, picture frames",
+      "keywords": ["furniture", "mirrors", "frames", "мебель", "зеркала", "рамы"]
+    },
+    {
+      "number": 21,
+      "name_ru": "Домашняя утварь, посуда",
+      "name_en": "Household utensils, glassware, porcelain",
+      "keywords": ["household", "kitchen", "glassware", "посуда", "кухня", "стекло"]
+    },
+    {
+      "number": 22,
+      "name_ru": "Канаты, веревки, палатки",
+      "name_en": "Ropes, tents, sails, bags",
+      "keywords": ["ropes", "tents", "canvas", "веревки", "палатки", "брезент"]
+    },
+    {
+      "number": 23,
+      "name_ru": "Нити для текстиля",
+      "name_en": "Yarns and threads for textile use",
+      "keywords": ["yarn", "thread", "textile", "нити", "пряжа", "текстиль"]
+    },
+    {
+      "number": 24,
+      "name_ru": "Ткани, текстильные изделия",
+      "name_en": "Textiles, bed covers, tablecloths",
+      "keywords": ["textiles", "fabric", "linen", "ткани", "белье", "текстиль"]
+    },
+    {
+      "number": 25,
+      "name_ru": "Одежда, обувь, головные уборы",
+      "name_en": "Clothing, footwear, headwear",
+      "keywords": ["clothing", "fashion", "apparel", "shoes", "одежда", "обувь", "мода"]
+    },
+    {
+      "number": 26,
+      "name_ru": "Кружева, ленты, пуговицы",
+      "name_en": "Lace, ribbons, buttons, accessories",
+      "keywords": ["lace", "ribbons", "buttons", "кружева", "ленты", "пуговицы"]
+    },
+    {
+      "number": 27,
+      "name_ru": "Ковры, обои, напольные покрытия",
+      "name_en": "Carpets, rugs, wallpaper, floor coverings",
+      "keywords": ["carpet", "rugs", "flooring", "wallpaper", "ковры", "обои", "пол"]
+    },
+    {
+      "number": 28,
+      "name_ru": "Игры, игрушки, спортивные товары",
+      "name_en": "Games, toys, sporting goods",
+      "keywords": ["games", "toys", "sports", "игры", "игрушки", "спорт"]
+    },
+    {
+      "number": 29,
+      "name_ru": "Мясо, рыба, молочные продукты",
+      "name_en": "Meat, fish, dairy products",
+      "keywords": ["meat", "fish", "dairy", "food", "мясо", "рыба", "молочные", "еда"]
+    },
+    {
+      "number": 30,
+      "name_ru": "Кофе, чай, кондитерские изделия",
+      "name_en": "Coffee, tea, confectionery, bakery",
+      "keywords": ["coffee", "tea", "bakery", "sweets", "кофе", "чай", "выпечка", "сладости"]
+    },
+    {
+      "number": 31,
+      "name_ru": "Сельхозпродукция, семена, растения",
+      "name_en": "Agricultural products, seeds, plants",
+      "keywords": ["agriculture", "seeds", "plants", "farming", "сельское хозяйство", "семена", "растения"]
+    },
+    {
+      "number": 32,
+      "name_ru": "Пиво, безалкогольные напитки",
+      "name_en": "Beer, non-alcoholic beverages",
+      "keywords": ["beer", "beverages", "drinks", "water", "пиво", "напитки", "вода"]
+    },
+    {
+      "number": 33,
+      "name_ru": "Алкогольные напитки (кроме пива)",
+      "name_en": "Alcoholic beverages (except beer)",
+      "keywords": ["alcohol", "wine", "spirits", "vodka", "алкоголь", "вино", "водка"]
+    },
+    {
+      "number": 34,
+      "name_ru": "Табак, курительные принадлежности",
+      "name_en": "Tobacco, smokers' articles",
+      "keywords": ["tobacco", "smoking", "cigarettes", "табак", "курение", "сигареты"]
+    },
+    {
+      "number": 35,
+      "name_ru": "Реклама, управление бизнесом",
+      "name_en": "Advertising, business management",
+      "keywords": ["advertising", "marketing", "business", "management", "реклама", "маркетинг", "бизнес"]
+    },
+    {
+      "number": 36,
+      "name_ru": "Страхование, финансы, недвижимость",
+      "name_en": "Insurance, finance, real estate",
+      "keywords": ["insurance", "finance", "banking", "real estate", "страхование", "финансы", "недвижимость"]
+    },
+    {
+      "number": 37,
+      "name_ru": "Строительство, ремонт, установка",
+      "name_en": "Construction, repair, installation",
+      "keywords": ["construction", "repair", "installation", "строительство", "ремонт", "установка"]
+    },
+    {
+      "number": 38,
+      "name_ru": "Телекоммуникации",
+      "name_en": "Telecommunications",
+      "keywords": ["telecom", "communications", "internet", "телекоммуникации", "связь", "интернет"]
+    },
+    {
+      "number": 39,
+      "name_ru": "Транспорт, хранение, доставка",
+      "name_en": "Transport, storage, delivery",
+      "keywords": ["transport", "logistics", "delivery", "storage", "транспорт", "логистика", "доставка"]
+    },
+    {
+      "number": 40,
+      "name_ru": "Обработка материалов",
+      "name_en": "Treatment of materials, manufacturing",
+      "keywords": ["manufacturing", "processing", "treatment", "производство", "обработка"]
+    },
+    {
+      "number": 41,
+      "name_ru": "Образование, развлечения, спорт",
+      "name_en": "Education, entertainment, sports",
+      "keywords": ["education", "entertainment", "sports", "training", "образование", "развлечения", "обучение"]
+    },
+    {
+      "number": 42,
+      "name_ru": "IT-услуги, научные исследования",
+      "name_en": "IT services, scientific research",
+      "keywords": ["IT", "software", "research", "technology", "SaaS", "ИТ", "исследования", "технологии"]
+    },
+    {
+      "number": 43,
+      "name_ru": "Рестораны, гостиницы, кейтеринг",
+      "name_en": "Restaurants, hotels, catering",
+      "keywords": ["restaurant", "hotel", "catering", "hospitality", "ресторан", "гостиница", "кейтеринг"]
+    },
+    {
+      "number": 44,
+      "name_ru": "Медицинские, ветеринарные услуги",
+      "name_en": "Medical, veterinary services",
+      "keywords": ["medical", "healthcare", "veterinary", "clinic", "медицина", "ветеринария", "клиника"]
+    },
+    {
+      "number": 45,
+      "name_ru": "Юридические услуги, охрана",
+      "name_en": "Legal services, security",
+      "keywords": ["legal", "law", "security", "юридические", "право", "охрана"]
+    }
+  ]
+}

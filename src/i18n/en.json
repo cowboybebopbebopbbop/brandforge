@@ -1,0 +1,190 @@
+{
+  "app": {
+    "title": "BrandForge",
+    "subtitle": "Professional Brand Name Generator"
+  },
+  "tabs": {
+    "newProject": "New Project",
+    "close": "Close tab"
+  },
+  "steps": {
+    "configure": "Configure",
+    "generate": "Generate",
+    "check": "Check Availability",
+    "results": "Results"
+  },
+  "prompt": {
+    "title": "AI Prompt",
+    "readyToGenerate": "Ready to Generate",
+    "reviewPrompt": "Review or edit the AI prompt before generating names",
+    "show": "Show Prompt",
+    "hide": "Hide Prompt",
+    "edited": "Edited",
+    "reset": "Reset",
+    "placeholder": "Enter your custom prompt...",
+    "editHint": "You can edit this prompt to customize how the AI generates names. Changes will be used for this generation only."
+  },
+  "config": {
+    "industry": "Industry / Niche",
+    "industryPlaceholder": "e.g., Technology, Fashion, Food...",
+    "industryTooltip": "Specify your business sector or market niche. This helps the AI understand your target audience and generate contextually appropriate brand names.",
+    "keywords": "Keywords",
+    "keywordsPlaceholder": "Enter keywords separated by commas",
+    "keywordsTooltip": "Enter words or concepts that should inspire the brand name. These can be values (trust, innovation), attributes (fast, eco-friendly), or related terms (cloud, spark). The AI will use these to generate relevant name ideas.",
+    "tone": "Tone / Style",
+    "toneTooltip": "Select the personality and feel of your brand name. You can choose multiple tones to blend different characteristics, or add a custom tone.",
+    "tones": {
+      "professional": "Professional",
+      "playful": "Playful",
+      "techy": "Techy",
+      "luxurious": "Luxurious",
+      "minimal": "Minimal",
+      "bold": "Bold"
+    },
+    "length": "Name Length",
+    "charLength": "Character Length",
+    "charLengthTooltip": "Choose preferred name lengths by character count. Short names are punchy, long names allow more detail.",
+    "charLengths": {
+      "short": "Short (3-6 chars)",
+      "medium": "Medium (7-10 chars)",
+      "long": "Long (11+ chars)"
+    },
+    "wordCount": "Word Count",
+    "wordCountTooltip": "Choose how many words should be in the brand name. Single words are memorable, multiple words offer more meaning.",
+    "wordCounts": {
+      "short": "1 word",
+      "medium": "1-2 words",
+      "long": "2-3 words"
+    },
+    "lengths": {
+      "short": "Short (1 word, 3-6 chars)",
+      "medium": "Medium (1-2 words, 6-12 chars)",
+      "long": "Long (2-3 words, 10-20 chars)"
+    },
+    "language": "Language",
+    "languageTooltip": "Select the language for generated names. 'Both' will create a mix of English and Russian name suggestions.",
+    "languages": {
+      "english": "English",
+      "russian": "Russian",
+      "both": "Both"
+    },
+    "customInstructions": "Custom Instructions",
+    "customInstructionsPlaceholder": "Any additional requirements for name generation...",
+    "customInstructionsTooltip": "Add any specific requirements not covered above. E.g., 'avoid names starting with X', 'include nature themes', or 'must work as a domain name'.",
+    "mktuClasses": "MKTU Classes",
+    "mktuClassesHint": "Select trademark classes for your industry",
+    "mktuTooltip": "Nice Classification (MKTU) defines product/service categories for trademark registration. Select classes relevant to your business for accurate trademark checking.",
+    "autoSuggest": "Auto-suggest classes",
+    "selectAll": "Select All",
+    "clearAll": "Clear All",
+    "selectMultiple": "select multiple",
+    "customTonePlaceholder": "Or add custom tone/style...",
+    "customLengthPlaceholder": "Or add custom length requirement...",
+    "customCharLengthPlaceholder": "Or add custom character length...",
+    "customWordCountPlaceholder": "Or add custom word count...",
+    "creativity": "Generation Randomness",
+    "creativityTooltip": "Controls how experimental the AI gets. Low = safer, more conventional names. High = more unique and unexpected suggestions.",
+    "creativityLevels": {
+      "low": "Low",
+      "lowDesc": "Less random. The most direct name ideas",
+      "medium": "Medium",
+      "mediumDesc": "Balanced. More creative results",
+      "high": "High",
+      "highDesc": "Random ideas. More varied results"
+    }
+  },
+  "actions": {
+    "generate": "Generate Names",
+    "generating": "Generating...",
+    "regenerate": "Regenerate",
+    "regenerateWithNotes": "With Feedback",
+    "checkSelected": "Check Selected",
+    "checkAll": "Check All",
+    "checking": "Checking...",
+    "back": "Back",
+    "next": "Next",
+    "export": "Export",
+    "copy": "Copy",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "like": "Like this name",
+    "dislike": "Dislike this name",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "remove": "Remove"
+  },
+  "names": {
+    "generated": "Generated Names",
+    "count": "{{count}} names",
+    "selected": "{{count}} selected",
+    "types": {
+      "invented": "Invented",
+      "compound": "Compound",
+      "acronym": "Acronym",
+      "descriptive": "Descriptive",
+      "foreign": "Foreign"
+    },
+    "filter": "Filter by type",
+    "all": "All"
+  },
+  "risk": {
+    "safe": "Safe",
+    "caution": "Caution",
+    "risk": "Risk",
+    "safeDesc": "No conflicting trademarks found",
+    "cautionDesc": "Similar names exist",
+    "riskDesc": "Exact match found"
+  },
+  "export": {
+    "pdf": "Export PDF",
+    "csv": "Export CSV",
+    "clipboard": "Copy to Clipboard",
+    "copied": "Copied!"
+  },
+  "settings": {
+    "title": "Settings",
+    "provider": "AI Provider",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your API key",
+    "language": "Interface Language",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "resultsCount": "Results per generation",
+    "save": "Save Settings",
+    "saved": "Saved!"
+  },
+  "errors": {
+    "noApiKey": "Please enter your API key in settings",
+    "noIndustry": "Please enter an industry or niche",
+    "noKeywords": "Please enter at least one keyword",
+    "noMktuClasses": "Please select at least one MKTU class",
+    "generationFailed": "Name generation failed",
+    "checkFailed": "Trademark check failed",
+    "noNamesSelected": "Please select at least one name to check"
+  },
+  "library": {
+    "title": "Favorites Library",
+    "subtitle": "{{count}} favorite names saved",
+    "empty": "No favorites yet",
+    "emptyDesc": "Star your favorite names during generation to save them here",
+    "removeConfirm": "Remove this name from favorites?",
+    "exportJSON": "Export as JSON",
+    "copyAll": "Copy All Names"
+  },
+  "feedback": {
+    "title": "AI Learning from Your Feedback",
+    "description": "Your likes and dislikes help improve future name suggestions",
+    "cleanDescription": "Generate fresh names without using previous feedback",
+    "likedCount": "{{count}} names liked",
+    "dislikedCount": "{{count}} names disliked",
+    "usingFeedback": "Using your feedback to generate better names",
+    "useNotes": "Use Feedback",
+    "cleanGeneration": "Clean Generation",
+    "useNotesHint": "Generate names based on your likes and dislikes",
+    "cleanHint": "Generate fresh names without feedback"
+  }
+}
