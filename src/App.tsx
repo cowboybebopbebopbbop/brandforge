@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "./store";
 import { AuthProvider } from "./contexts/AuthContext";
+import { PasswordGate } from "./components/PasswordGate/PasswordGate";
 import TabManager from "./components/TabManager/TabManager";
 import Wizard from "./components/Wizard/Wizard";
 import Settings from "./components/Settings/Settings";
@@ -54,9 +55,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <PasswordGate>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </PasswordGate>
   );
 }
 
