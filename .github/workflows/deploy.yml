@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main  # или master, в зависимости от вашей ветки
+      - master
   workflow_dispatch:
 
 permissions:
