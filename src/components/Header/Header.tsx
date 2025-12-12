@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { AuthButton } from "../Auth/AuthButton";
 
 interface HeaderProps {
   onSettingsClick: () => void;
@@ -29,6 +30,9 @@ export default function Header({ onSettingsClick, onLanguageToggle, currentLangu
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Auth Button */}
+          <AuthButton />
+
           {/* Library Button */}
           {onLibraryClick && (
             <button

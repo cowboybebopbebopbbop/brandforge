@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "./store";
+import { AuthProvider } from "./contexts/AuthContext";
 import TabManager from "./components/TabManager/TabManager";
 import Wizard from "./components/Wizard/Wizard";
 import Settings from "./components/Settings/Settings";
 import Header from "./components/Header/Header";
 import Library from "./components/Library/Library";
+import { useFirebaseSync } from "./hooks/useFirebaseSync";
 
-function App() {
+function AppContent() {
   const { i18n } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const { settings, updateSettings } = useAppStore();
+  
+  // Enable Firebase sync
+  useFirebaseSync();
 
   const toggleLanguage = () => {
     const newLang = settings.language === "en" ? "ru" : "en";
@@ -44,6 +49,14 @@ function App() {
         <Settings onClose={() => setShowSettings(false)} />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
