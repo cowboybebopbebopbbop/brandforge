@@ -208,11 +208,11 @@ export const useAppStore = create<AppState>()(
         settings: state.settings,
         favoritedNames: state.favoritedNames,
       }),
-      onRehydrate: () => {
-        return (state) => {
+      onRehydrateStorage: () => {
+        return (state: AppState | undefined) => {
           if (state) {
             // Update tabCounter based on existing tabs
-            const maxId = state.tabs.reduce((max, tab) => {
+            const maxId = state.tabs.reduce((max: number, tab: TabData) => {
               const match = tab.id.match(/tab-(\d+)/);
               return match ? Math.max(max, parseInt(match[1])) : max;
             }, 0);
