@@ -1,9 +1,7 @@
 import { 
-  collection, 
   doc, 
   setDoc, 
   getDoc, 
-  updateDoc,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
