@@ -34,6 +34,13 @@ export interface TabData {
     creativity: "low" | "medium" | "high";
     customInstructions: string;
     mktuClasses: number[];
+    // Additional brief fields
+    targetAudience: string;
+    positioning: string;
+    competitors: string[];
+    inspirationBrands: string[];
+    restrictions: string;
+    geographicMarket: string;
   };
   generatedNames: GeneratedName[];
   isGenerating: boolean;
@@ -93,6 +100,12 @@ const createDefaultTab = (id: string, name: string): TabData => ({
     creativity: "high",
     customInstructions: "",
     mktuClasses: [],
+    targetAudience: "",
+    positioning: "",
+    competitors: [],
+    inspirationBrands: [],
+    restrictions: "",
+    geographicMarket: "",
   },
   generatedNames: [],
   isGenerating: false,

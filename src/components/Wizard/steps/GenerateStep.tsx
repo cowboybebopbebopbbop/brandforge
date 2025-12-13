@@ -21,8 +21,8 @@ export default function GenerateStep() {
     
     const { config } = currentTab;
     
-    // Collect feedback from all tabs
-    const allGeneratedNames = tabs.flatMap(tab => tab.generatedNames);
+    // Collect feedback from CURRENT tab only (project-specific feedback)
+    const allGeneratedNames = currentTab.generatedNames;
     const likedNames = allGeneratedNames.filter(n => n.liked);
     const dislikedNames = allGeneratedNames.filter(n => n.disliked);
     
@@ -125,30 +125,92 @@ Generate ${settings.resultsPerGeneration} unique brand names for a ${config.indu
       prompt += `\n\n**Additional Instructions:** ${config.customInstructions}`;
     }
 
+    // Add target audience and positioning if available
+    if (config.targetAudience?.trim()) {
+      prompt += `\n\n**Target Audience:** ${config.targetAudience}`;
+    }
+
+    if (config.positioning?.trim()) {
+      prompt += `\n\n**Brand Positioning:** ${config.positioning}`;
+    }
+
+    if (config.competitors && config.competitors.length > 0) {
+      prompt += `\n\n**Competitors to differentiate from:** ${config.competitors.join(", ")}`;
+    }
+
+    if (config.inspirationBrands && config.inspirationBrands.length > 0) {
+      prompt += `\n\n**Inspiration brands (style reference):** ${config.inspirationBrands.join(", ")}`;
+    }
+
+    if (config.restrictions?.trim()) {
+      prompt += `\n\n**Restrictions/Taboos:** ${config.restrictions}`;
+    }
+
+    if (config.geographicMarket?.trim()) {
+      prompt += `\n\n**Geographic Market:** ${config.geographicMarket}`;
+    }
+
     // Add user feedback section if there are liked or disliked names AND feedback is enabled
     if (includeFeedback && (likedNames.length > 0 || dislikedNames.length > 0)) {
       prompt += `\n\n---
 
-# USER FEEDBACK
+# USER FEEDBACK & CRITICAL REQUIREMENTS
 
-Based on previous generations, the user has provided the following feedback:
+Based on previous generations, the user has provided feedback. This is CRITICAL - you MUST follow these rules:
 `;
 
-      if (likedNames.length > 0) {
-        prompt += `\n**LIKED Names** (generate MORE names like these):\n`;
-        likedNames.slice(0, 10).forEach(name => {
-          prompt += `• ${name.name} (${name.type})${name.rationale ? ` - ${name.rationale.substring(0, 80)}` : ''}\n`;
-        });
-      }
-
       if (dislikedNames.length > 0) {
-        prompt += `\n**DISLIKED Names** (AVOID names like these):\n`;
-        dislikedNames.slice(0, 10).forEach(name => {
-          prompt += `• ${name.name} (${name.type})${name.rationale ? ` - ${name.rationale.substring(0, 80)}` : ''}\n`;
+        // Extract words and roots from disliked names
+        const dislikedWords = new Set<string>();
+        dislikedNames.forEach(name => {
+          // Split by common separators and spaces
+          const words = name.name.split(/[\s\-_\.]+/);
+          words.forEach(word => {
+            dislikedWords.add(word.toLowerCase());
+            // Add root (first 4+ chars for longer words)
+            if (word.length > 5) {
+              dislikedWords.add(word.substring(0, Math.floor(word.length * 0.6)).toLowerCase());
+            }
+          });
         });
+
+        prompt += `\n**❌ DISLIKED Names - STRICTLY FORBIDDEN:**\n`;
+        dislikedNames.forEach(name => {
+          prompt += `• ${name.name} - ${name.rationale || 'User disliked this'}\n`;
+        });
+        
+        prompt += `\n**CRITICAL RULES FOR DISLIKED NAMES:**
+1. DO NOT use any of the disliked names above, even with modifications
+2. DO NOT use ANY words or roots from disliked names: ${Array.from(dislikedWords).join(", ")}
+3. DO NOT create variations by adding/removing words to/from disliked names
+4. DO NOT use similar sounding words or translations of disliked names
+5. If a name was disliked, that entire word/root is now BANNED - explore completely different directions
+
+`;
       }
 
-      prompt += `\nUse this feedback to improve your suggestions. Generate names that align with the user's preferences based on what they liked, and avoid patterns similar to what they disliked.`;
+      if (likedNames.length > 0) {
+        prompt += `\n**✓ LIKED Names** (understand the PATTERN and style, but generate NEW names):\n`;
+        likedNames.forEach(name => {
+          prompt += `• ${name.name} (${name.type}) - ${name.rationale || 'User liked this style'}\n`;
+        });
+        
+        prompt += `\n**How to use liked names:**
+- Understand WHY these names work (tone, structure, feel, meaning)
+- Generate NEW names that capture the same essence but are completely DIFFERENT words
+- Match the linguistic style, word structure, and brand feeling
+- DO NOT just copy or slightly modify the liked names
+
+`;
+      }
+
+      prompt += `\n**GENERATION STRATEGY:**
+- Each new generation should explore DIFFERENT semantic territories
+- If previous names didn't work, dig DEEPER: new roots, associations, metaphors
+- Go WIDER: explore adjacent concepts, lateral thinking
+- NEVER repeat rejected patterns or words
+- Treat each generation as a fresh creative exploration
+`;
     }
 
     prompt += `
@@ -163,7 +225,55 @@ For each name, provide the following in a structured format:
 2. **Type:** One of: invented, compound, acronym, descriptive, or foreign
 3. **Rationale:** A short, strategic explanation that clarifies the intended brand feeling, positioning, and meaning
 
-Present all ${settings.resultsPerGeneration} names in a numbered list.`;
+Present all ${settings.resultsPerGeneration} names in a numbered list.
+
+---
+
+# CRITICAL REQUIREMENTS
+
+${config.language === 'russian' ? `
+**RUSSIAN LANGUAGE GENERATION RULES:**
+- Generate names in RUSSIAN language (Cyrillic script)
+- Create INVENTED words by modifying Russian roots (like "Яндекс" from "индекс", "Озон" from "ozone")
+- Use creative morphology: prefixes, suffixes, blending (like "ВкусВилл", "Магнит", "Тинькофф")
+- Transform existing Russian words into brand names through: truncation, combination, phonetic play
+- DO NOT just translate English words - create authentic Russian brand names
+- Examples of good Russian invented names: Сбер, Билайн, МегаФон, Ситилинк, Пятёрочка
+- AVOID simple English transliterations (like "Поинт" for "Point")
+- Think like Russian brand naming: short, memorable, culturally resonant
+` : config.language === 'both' ? `
+**MULTILINGUAL GENERATION:**
+- Create names that work in BOTH English and Russian
+- Consider pronunciation, spelling, and cultural meaning in both languages
+- Aim for names that are easy to pronounce and remember in both markets
+` : `
+**ENGLISH LANGUAGE GENERATION:**
+- Focus on English language names
+- Ensure easy pronunciation and spelling for English speakers
+- Consider international appeal and scalability
+`}
+
+**WORD COUNT ENFORCEMENT:**
+${allWordCounts.map(wc => {
+  if (wc === 'short') return '- For "1 word" requirement: Generate ONLY single-word names (e.g., "Nike", "Apex", "Zenith")';
+  if (wc === 'medium') return '- For "1-2 words" requirement: Generate names with maximum 2 words (e.g., "Blue Sky", "FastTrack")';
+  if (wc === 'long') return '- For "2-3 words" requirement: Generate names with 2-3 words (e.g., "Peaceful Morning Yoga")';
+  return `- For "${wc}" requirement: Follow this specification exactly`;
+}).join('\n')}
+- STRICTLY adhere to word count - do not add extra words in subsequent generations
+- If user selected "1 word", NEVER generate 2-word names, even with feedback
+
+**UNIQUENESS & DIVERSITY:**
+- Every name must be COMPLETELY UNIQUE - no repeats from previous generations
+- Check your output: if you see duplicate names, replace them immediately
+- Explore diverse creative directions: different roots, meanings, associations, metaphors
+- Progressive depth: each generation should explore NEW semantic territories
+
+**QUALITY STANDARDS:**
+- Each name should feel like a real, professional brand
+- Avoid awkward combinations, hard-to-pronounce sequences
+- Ensure names are memorable, distinctive, and appropriate for the industry
+- Consider trademark-ability and domain availability potential`;
 
     return prompt;
   };
@@ -173,7 +283,7 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
     if (!isPromptEdited) {
       setCustomPrompt(buildDefaultPrompt(useFeedback));
     }
-  }, [currentTab?.config, settings.resultsPerGeneration, isPromptEdited, tabs, useFeedback]);
+  }, [currentTab?.config, currentTab?.generatedNames, settings.resultsPerGeneration, isPromptEdited, useFeedback]);
 
   // Reset prompt edit flag when step changes to regenerate with new config
   useEffect(() => {
@@ -231,7 +341,20 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
         settings.geminiModel
       );
 
-      updateCurrentTab({ generatedNames: names, isGenerating: false });
+      // Filter out duplicates from current tab only (project-specific)
+      const allPreviousNames = new Set(
+        currentTab.generatedNames.map(n => n.name.toLowerCase().trim())
+      );
+      
+      const uniqueNames = names.filter(name => {
+        const normalizedName = name.name.toLowerCase().trim();
+        return !allPreviousNames.has(normalizedName);
+      });
+
+      // If we filtered out too many, keep original but warn
+      const finalNames = uniqueNames.length > Math.floor(names.length * 0.3) ? uniqueNames : names;
+
+      updateCurrentTab({ generatedNames: finalNames, isGenerating: false });
     } catch (error: any) {
       console.error("Generation failed:", error);
       const errorMessage = error?.message || t("errors.generationFailed");
@@ -314,8 +437,8 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
     foreign: "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300",
   };
 
-  // Check if we have feedback to use
-  const allGeneratedNames = tabs.flatMap(tab => tab.generatedNames);
+  // Check if we have feedback to use (from current tab only)
+  const allGeneratedNames = currentTab.generatedNames;
   const likedCount = allGeneratedNames.filter(n => n.liked).length;
   const dislikedCount = allGeneratedNames.filter(n => n.disliked).length;
   const hasFeedback = likedCount > 0 || dislikedCount > 0;

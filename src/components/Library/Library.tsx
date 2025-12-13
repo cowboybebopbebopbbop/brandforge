@@ -1,9 +1,26 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store";
+import { checkTrademarks } from "../../api";
+import type { GeneratedName } from "../../store";
+
+interface TrademarkResult {
+  name: string;
+  risk_level: "safe" | "caution" | "risk";
+  exact_matches: string[];
+  similar_matches: string[];
+  details: string;
+}
 
 export default function Library() {
   const { t } = useTranslation();
-  const { favoritedNames, removeFromFavorites } = useAppStore();
+  const { favoritedNames, removeFromFavorites, favoritedNames: favorites, settings, tabs } = useAppStore();
+  const [isChecking, setIsChecking] = useState(false);
+  const [checkedNames, setCheckedNames] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  // Get MKTU classes from active tabs or use empty array
+  const mktuClasses = tabs[0]?.config?.mktuClasses || [];
 
   const handleRemove = (name: string) => {
     if (confirm(t("library.confirmRemove"))) {
@@ -47,6 +64,31 @@ export default function Library() {
     await navigator.clipboard.writeText(text);
   };
 
+  const checkFavorites = async () => {
+    if (favoritedNames.length === 0) return;
+    
+    setError(null);
+    setIsChecking(true);
+
+    try {
+      const results: TrademarkResult[] = await checkTrademarks({
+        names: favoritedNames.map((n) => n.name),
+        mktu_classes: mktuClasses,
+      });
+      
+      // Store checked names with their results
+      const newChecked = new Set(checkedNames);
+      results.forEach(r => newChecked.add(r.name));
+      setCheckedNames(newChecked);
+      
+      setIsChecking(false);
+    } catch (error) {
+      console.error("Check failed:", error);
+      setError(t("errors.checkFailed"));
+      setIsChecking(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
@@ -64,6 +106,28 @@ export default function Library() {
         </div>
         {favoritedNames.length > 0 && (
           <div className="flex gap-2">
+            <button
+              onClick={checkFavorites}
+              disabled={isChecking}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {isChecking ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {t("actions.checking")}
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  {t("actions.checkAll")}
+                </>
+              )}
+            </button>
             <button
               onClick={copyToClipboard}
               className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"

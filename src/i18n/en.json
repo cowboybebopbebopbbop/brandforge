@@ -25,6 +25,8 @@
     "editHint": "You can edit this prompt to customize how the AI generates names. Changes will be used for this generation only."
   },
   "config": {
+    "briefTitle": "Brand Brief",
+    "briefSubtitle": "Fill out the brief or import from a file",
     "industry": "Industry / Niche",
     "industryPlaceholder": "e.g., Technology, Fashion, Food...",
     "industryTooltip": "Specify your business sector or market niche. This helps the AI understand your target audience and generate contextually appropriate brand names.",
@@ -71,6 +73,24 @@
     "customInstructions": "Custom Instructions",
     "customInstructionsPlaceholder": "Any additional requirements for name generation...",
     "customInstructionsTooltip": "Add any specific requirements not covered above. E.g., 'avoid names starting with X', 'include nature themes', or 'must work as a domain name'.",
+    "targetAudience": "Target Audience",
+    "targetAudiencePlaceholder": "e.g., Tech-savvy millennials, Parents with young children...",
+    "targetAudienceTooltip": "Describe your ideal customers: age group, gender, interests, lifestyle, values. This helps generate names that resonate with your audience.",
+    "positioning": "Brand Positioning",
+    "positioningPlaceholder": "e.g., Premium yet accessible, Disruptive innovator, Trusted expert...",
+    "positioningTooltip": "How do you want your brand to be perceived? What makes you different from competitors? Define your unique position in the market.",
+    "competitors": "Key Competitors",
+    "competitorsPlaceholder": "Enter competitor names separated by commas",
+    "competitorsTooltip": "List your main competitors. AI will generate names that differentiate you while staying relevant to your industry.",
+    "inspirationBrands": "Inspiration Brands",
+    "inspirationBrandsPlaceholder": "Enter brand names you admire, separated by commas",
+    "inspirationBrandsTooltip": "List brands (from any industry) whose names you admire. This helps establish the style and feel you're aiming for.",
+    "restrictions": "Restrictions & Taboos",
+    "restrictionsPlaceholder": "e.g., Avoid religious terms, no names starting with 'X', must not sound similar to...",
+    "restrictionsTooltip": "Specify what to avoid: certain letters, sounds, meanings, cultural associations, or anything else that's off-limits.",
+    "geographicMarket": "Geographic Market",
+    "geographicMarketPlaceholder": "e.g., Global, North America, Europe, Asia...",
+    "geographicMarketTooltip": "Where will your brand operate? This affects pronunciation, cultural appropriateness, and domain availability considerations.",
     "mktuClasses": "MKTU Classes",
     "mktuClassesHint": "Select trademark classes for your industry",
     "mktuTooltip": "Nice Classification (MKTU) defines product/service categories for trademark registration. Select classes relevant to your business for accurate trademark checking.",
@@ -111,6 +131,8 @@
     "copy": "Copy",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
+    "importBrief": "Import Brief",
+    "exportBrief": "Export Brief",
     "like": "Like this name",
     "dislike": "Dislike this name",
     "favorite": "Add to favorites",
@@ -202,7 +224,8 @@
     "noMktuClasses": "Please select at least one MKTU class",
     "generationFailed": "Name generation failed",
     "checkFailed": "Trademark check failed",
-    "noNamesSelected": "Please select at least one name to check"
+    "noNamesSelected": "Please select at least one name to check",
+    "briefImportFailed": "Failed to import brief. Please check the file format."
   },
   "library": {
     "title": "Favorites Library",
@@ -212,6 +235,9 @@
     "removeConfirm": "Remove this name from favorites?",
     "exportJSON": "Export as JSON",
     "copyAll": "Copy All Names"
+  },
+  "success": {
+    "briefImported": "Brief imported successfully!"
   },
   "feedback": {
     "title": "AI Learning from Your Feedback",

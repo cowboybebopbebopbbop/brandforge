@@ -20,8 +20,11 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
   const currentTab = getCurrentTab();
   const [mktuClasses, setMktuClasses] = useState<MKTUClass[]>([]);
   const [keywordsInput, setKeywordsInput] = useState("");
+  const [competitorsInput, setCompetitorsInput] = useState("");
+  const [inspirationBrandsInput, setInspirationBrandsInput] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [errors, setErrors] = useState<{ industry?: string; keywords?: string; apiKey?: string }>({});
+  const [importSuccess, setImportSuccess] = useState(false);
 
   useEffect(() => {
     // Load MKTU classes from bundled JSON
@@ -34,7 +37,9 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
 
   useEffect(() => {
     if (currentTab) {
-      setKeywordsInput(currentTab.config.keywords.join(", "));
+      setKeywordsInput(currentTab.config.keywords?.join(", ") || "");
+      setCompetitorsInput(currentTab.config.competitors?.join(", ") || "");
+      setInspirationBrandsInput(currentTab.config.inspirationBrands?.join(", ") || "");
     }
   }, [currentTab?.id]);
 
@@ -50,6 +55,102 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
     setKeywordsInput(value);
     const keywords = value.split(",").map((k) => k.trim()).filter(Boolean);
     updateConfig({ keywords });
+  };
+
+  const handleCompetitorsChange = (value: string) => {
+    setCompetitorsInput(value);
+    const competitors = value.split(",").map((k) => k.trim()).filter(Boolean);
+    updateConfig({ competitors });
+  };
+
+  const handleInspirationBrandsChange = (value: string) => {
+    setInspirationBrandsInput(value);
+    const inspirationBrands = value.split(",").map((k) => k.trim()).filter(Boolean);
+    updateConfig({ inspirationBrands });
+  };
+
+  const handleImportBrief = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const briefData = JSON.parse(e.target?.result as string);
+        
+        // Update config with imported data
+        updateConfig({
+          industry: briefData.industry || config.industry,
+          keywords: briefData.keywords || config.keywords,
+          tones: briefData.tones || config.tones,
+          customTone: briefData.customTone || config.customTone,
+          lengths: briefData.lengths || config.lengths,
+          customLength: briefData.customLength || config.customLength,
+          wordCounts: briefData.wordCounts || config.wordCounts,
+          customWordCount: briefData.customWordCount || config.customWordCount,
+          language: briefData.language || config.language,
+          creativity: briefData.creativity || config.creativity,
+          customInstructions: briefData.customInstructions || config.customInstructions,
+          mktuClasses: briefData.mktuClasses || config.mktuClasses,
+          targetAudience: briefData.targetAudience || config.targetAudience,
+          positioning: briefData.positioning || config.positioning,
+          competitors: briefData.competitors || config.competitors,
+          inspirationBrands: briefData.inspirationBrands || config.inspirationBrands,
+          restrictions: briefData.restrictions || config.restrictions,
+          geographicMarket: briefData.geographicMarket || config.geographicMarket,
+        });
+
+        // Update input fields
+        if (briefData.keywords) setKeywordsInput(briefData.keywords.join(", "));
+        if (briefData.competitors) setCompetitorsInput(briefData.competitors.join(", "));
+        if (briefData.inspirationBrands) setInspirationBrandsInput(briefData.inspirationBrands.join(", "));
+
+        setImportSuccess(true);
+        setTimeout(() => setImportSuccess(false), 3000);
+      } catch (error) {
+        console.error("Failed to parse brief file:", error);
+        alert(t("errors.briefImportFailed"));
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input so same file can be selected again
+    event.target.value = "";
+  };
+
+  const handleExportBrief = () => {
+    const briefData = {
+      industry: config.industry,
+      keywords: config.keywords,
+      tones: config.tones,
+      customTone: config.customTone,
+      lengths: config.lengths,
+      customLength: config.customLength,
+      wordCounts: config.wordCounts,
+      customWordCount: config.customWordCount,
+      language: config.language,
+      creativity: config.creativity,
+      customInstructions: config.customInstructions,
+      mktuClasses: config.mktuClasses,
+      targetAudience: config.targetAudience,
+      positioning: config.positioning,
+      competitors: config.competitors,
+      inspirationBrands: config.inspirationBrands,
+      restrictions: config.restrictions,
+      geographicMarket: config.geographicMarket,
+      exportedAt: new Date().toISOString(),
+    };
+
+    const dataStr = JSON.stringify(briefData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `brandforge-brief-${currentTab.name.replace(/\s+/g, "-")}-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleNext = () => {
@@ -108,6 +209,53 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
+      {/* Import/Export Buttons */}
+      <div className="flex items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t("config.briefTitle")}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t("config.briefSubtitle")}</p>
+        </div>
+        <div className="flex gap-2">
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportBrief}
+              className="hidden"
+            />
+            <div className="px-4 py-2 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              {t("actions.importBrief")}
+            </div>
+          </label>
+          <button
+            onClick={handleExportBrief}
+            className="px-4 py-2 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+            </svg>
+            {t("actions.exportBrief")}
+          </button>
+        </div>
+      </div>
+
+      {/* Import Success Message */}
+      {importSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-4 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              {t("success.briefImported")}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* API Key Error Banner */}
       {errors.apiKey && onOpenSettings && (
         <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
@@ -182,6 +330,74 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
         {errors.keywords && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.keywords}</p>
         )}
+      </div>
+
+      {/* Target Audience */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t("config.targetAudience")}
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {t("config.targetAudienceTooltip")}
+        </p>
+        <input
+          type="text"
+          value={config.targetAudience}
+          onChange={(e) => updateConfig({ targetAudience: e.target.value })}
+          placeholder={t("config.targetAudiencePlaceholder")}
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+        />
+      </div>
+
+      {/* Positioning */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t("config.positioning")}
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {t("config.positioningTooltip")}
+        </p>
+        <textarea
+          value={config.positioning}
+          onChange={(e) => updateConfig({ positioning: e.target.value })}
+          placeholder={t("config.positioningPlaceholder")}
+          rows={2}
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+        />
+      </div>
+
+      {/* Competitors */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t("config.competitors")}
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {t("config.competitorsTooltip")}
+        </p>
+        <input
+          type="text"
+          value={competitorsInput}
+          onChange={(e) => handleCompetitorsChange(e.target.value)}
+          placeholder={t("config.competitorsPlaceholder")}
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+        />
+      </div>
+
+      {/* Inspiration Brands */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t("config.inspirationBrands")}
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {t("config.inspirationBrandsTooltip")}
+        </p>
+        <input
+          type="text"
+          value={inspirationBrandsInput}
+          onChange={(e) => handleInspirationBrandsChange(e.target.value)}
+          placeholder={t("config.inspirationBrandsPlaceholder")}
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+        />
       </div>
 
       {/* Tone - Multi-select with custom */}
@@ -402,6 +618,40 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
                 placeholder={t("config.customInstructionsPlaceholder")}
                 rows={3}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+              />
+            </div>
+
+            {/* Restrictions */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t("config.restrictions")}
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {t("config.restrictionsTooltip")}
+              </p>
+              <textarea
+                value={config.restrictions}
+                onChange={(e) => updateConfig({ restrictions: e.target.value })}
+                placeholder={t("config.restrictionsPlaceholder")}
+                rows={2}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+              />
+            </div>
+
+            {/* Geographic Market */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t("config.geographicMarket")}
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {t("config.geographicMarketTooltip")}
+              </p>
+              <input
+                type="text"
+                value={config.geographicMarket}
+                onChange={(e) => updateConfig({ geographicMarket: e.target.value })}
+                placeholder={t("config.geographicMarketPlaceholder")}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               />
             </div>
 
