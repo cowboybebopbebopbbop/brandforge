@@ -138,10 +138,10 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
 };
 
 // Call Google Gemini API
-async function callGemini(prompt: string, apiKey: string, count: number): Promise<GeneratedName[]> {
+async function callGemini(prompt: string, apiKey: string, count: number, model: string = "gemini-2.0-flash-exp"): Promise<GeneratedName[]> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,14 +270,15 @@ async function callClaude(prompt: string, apiKey: string, count: number): Promis
 export async function generateNames(
   request: GenerationRequest,
   apiKey: string,
-  provider: string
+  provider: string,
+  geminiModel?: string
 ): Promise<GeneratedName[]> {
   const prompt = request.full_prompt || `Generate ${request.count} creative brand names for a ${request.industry} company. Keywords: ${request.keywords.join(', ')}. Tone: ${request.tones.join(', ')}. Length: ${request.lengths.join(', ')}. ${request.custom_instructions}`;
   
   try {
     switch (provider.toLowerCase()) {
       case 'gemini':
-        return await callGemini(prompt, apiKey, request.count);
+        return await callGemini(prompt, apiKey, request.count, geminiModel || "gemini-2.0-flash-exp");
       case 'openai':
         return await callOpenAI(prompt, apiKey, request.count);
       case 'claude':

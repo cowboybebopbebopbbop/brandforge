@@ -71,6 +71,25 @@ export default function Settings({ onClose }: SettingsProps) {
             />
           </div>
 
+          {/* Gemini Model Selection */}
+          {settings.provider === "gemini" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t("settings.geminiModel")}
+              </label>
+              <select
+                value={settings.geminiModel || "gemini-2.0-flash-exp"}
+                onChange={(e) => updateSettings({ geminiModel: e.target.value as SettingsType["geminiModel"] })}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="gemini-2.0-flash-exp">{t("settings.models.gemini-2.0-flash-exp")}</option>
+                <option value="gemini-1.5-flash">{t("settings.models.gemini-1.5-flash")}</option>
+                <option value="gemini-1.5-pro">{t("settings.models.gemini-1.5-pro")}</option>
+                <option value="gemini-1.0-pro">{t("settings.models.gemini-1.0-pro")}</option>
+              </select>
+            </div>
+          )}
+
           {/* Interface Language */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

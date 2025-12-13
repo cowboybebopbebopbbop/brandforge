@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../../store";
 import { checkTrademarks } from "../../../api";
@@ -14,6 +15,7 @@ export default function CheckStep() {
   const { t } = useTranslation();
   const { getCurrentTab, updateCurrentTab } = useAppStore();
   const currentTab = getCurrentTab();
+  const [error, setError] = useState<string | null>(null);
 
   if (!currentTab) return null;
 
@@ -21,6 +23,7 @@ export default function CheckStep() {
   const selectedNames = generatedNames.filter((n) => n.selected);
 
   const startCheck = async () => {
+    setError(null);
     updateCurrentTab({ isChecking: true });
 
     try {
@@ -49,7 +52,7 @@ export default function CheckStep() {
       updateCurrentTab({ generatedNames: updatedNames, isChecking: false, step: 4 });
     } catch (error) {
       console.error("Check failed:", error);
-      alert(t("errors.checkFailed"));
+      setError(t("errors.checkFailed"));
       updateCurrentTab({ isChecking: false });
     }
   };
@@ -61,6 +64,30 @@ export default function CheckStep() {
 
   return (
     <div className="space-y-6">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                {error}
+              </p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Check Info */}
       {!isChecking && (
         <div className="text-center py-8">

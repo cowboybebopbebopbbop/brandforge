@@ -10,16 +10,23 @@ interface MKTUClass {
   keywords: string[];
 }
 
-export default function ConfigureStep() {
+interface ConfigureStepProps {
+  onOpenSettings?: () => void;
+}
+
+export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
   const { t, i18n } = useTranslation();
   const { getCurrentTab, updateCurrentTab, settings } = useAppStore();
   const currentTab = getCurrentTab();
   const [mktuClasses, setMktuClasses] = useState<MKTUClass[]>([]);
   const [keywordsInput, setKeywordsInput] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errors, setErrors] = useState<{ industry?: string; keywords?: string; apiKey?: string }>({});
 
   useEffect(() => {
     // Load MKTU classes from bundled JSON
-    fetch("/python-sidecar/mktu_data.json")
+    const basePath = import.meta.env.BASE_URL || '/';
+    fetch(`${basePath}python-sidecar/mktu_data.json`)
       .then((res) => res.json())
       .then((data) => setMktuClasses(data.classes))
       .catch(console.error);
@@ -46,10 +53,24 @@ export default function ConfigureStep() {
   };
 
   const handleNext = () => {
+    const newErrors: typeof errors = {};
+    
     if (!settings.apiKey) {
-      alert(t("errors.noApiKey"));
+      newErrors.apiKey = t("errors.noApiKey");
+    }
+    if (!config.industry?.trim()) {
+      newErrors.industry = t("errors.noIndustry");
+    }
+    if (config.keywords.length === 0) {
+      newErrors.keywords = t("errors.noKeywords");
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
       return;
     }
+    
     updateCurrentTab({ step: 2 });
   };
 
@@ -86,11 +107,33 @@ export default function ConfigureStep() {
   const languages = ["english", "russian", "both"];
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-8 max-w-3xl mx-auto">
+      {/* API Key Error Banner */}
+      {errors.apiKey && onOpenSettings && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">
+                {errors.apiKey}
+              </p>
+              <button
+                onClick={onOpenSettings}
+                className="text-sm font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 underline"
+              >
+                {t("setup.configure")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Industry */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t("config.industry")}
+          {t("config.industry")} <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           {t("config.industryTooltip")}
@@ -98,16 +141,26 @@ export default function ConfigureStep() {
         <input
           type="text"
           value={config.industry}
-          onChange={(e) => updateConfig({ industry: e.target.value })}
+          onChange={(e) => {
+            updateConfig({ industry: e.target.value });
+            if (errors.industry) setErrors({ ...errors, industry: undefined });
+          }}
           placeholder={t("config.industryPlaceholder")}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+          className={`w-full px-4 py-3 rounded-lg border ${
+            errors.industry 
+              ? "border-red-500 focus:ring-red-500" 
+              : "border-gray-300 dark:border-gray-600 focus:ring-purple-500"
+          } bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:border-transparent transition-colors`}
         />
+        {errors.industry && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.industry}</p>
+        )}
       </div>
 
       {/* Keywords */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t("config.keywords")}
+          {t("config.keywords")} <span className="text-red-500">*</span>
         </label>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           {t("config.keywordsTooltip")}
@@ -115,16 +168,29 @@ export default function ConfigureStep() {
         <input
           type="text"
           value={keywordsInput}
-          onChange={(e) => handleKeywordsChange(e.target.value)}
+          onChange={(e) => {
+            handleKeywordsChange(e.target.value);
+            if (errors.keywords) setErrors({ ...errors, keywords: undefined });
+          }}
           placeholder={t("config.keywordsPlaceholder")}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+          className={`w-full px-4 py-3 rounded-lg border ${
+            errors.keywords 
+              ? "border-red-500 focus:ring-red-500" 
+              : "border-gray-300 dark:border-gray-600 focus:ring-purple-500"
+          } bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:border-transparent transition-colors`}
         />
+        {errors.keywords && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.keywords}</p>
+        )}
       </div>
 
       {/* Tone - Multi-select with custom */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t("config.tone")} <span className="text-gray-400 font-normal">({t("config.selectMultiple")})</span>
+          {t("config.tone")} 
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">
+            ({t("config.selectMultiple")})
+          </span>
         </label>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
           {t("config.toneTooltip")}
@@ -134,9 +200,9 @@ export default function ConfigureStep() {
             <button
               key={tone}
               onClick={() => toggleTone(tone)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 (config.tones || []).includes(tone)
-                  ? "bg-purple-600 text-white"
+                  ? "bg-purple-600 text-white shadow-md transform scale-105"
                   : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
               }`}
             >
@@ -144,6 +210,11 @@ export default function ConfigureStep() {
             </button>
           ))}
         </div>
+        {(config.tones || []).length > 0 && (
+          <p className="text-xs text-purple-600 dark:text-purple-400 mb-2">
+            ✓ {(config.tones || []).length} {t("config.selected")}
+          </p>
+        )}
         <input
           type="text"
           value={config.customTone || ""}
@@ -153,8 +224,34 @@ export default function ConfigureStep() {
         />
       </div>
 
-      {/* Character Length - Multi-select with custom */}
-      <div>
+      {/* Collapsible Advanced Options */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center justify-between w-full text-left group"
+        >
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {t("config.advancedOptions")}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t("config.advancedOptionsDesc")}
+            </p>
+          </div>
+          <svg 
+            className={`w-6 h-6 text-gray-400 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-6 space-y-6">
+            {/* Character Length - Multi-select with custom */}
+            <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {t("config.charLength")} <span className="text-gray-400 font-normal">({t("config.selectMultiple")})</span>
         </label>
@@ -291,42 +388,45 @@ export default function ConfigureStep() {
         </div>
       </div>
 
-      {/* Custom Instructions */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t("config.customInstructions")}
-        </label>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          {t("config.customInstructionsTooltip")}
-        </p>
-        <textarea
-          value={config.customInstructions}
-          onChange={(e) => updateConfig({ customInstructions: e.target.value })}
-          placeholder={t("config.customInstructionsPlaceholder")}
-          rows={3}
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
-        />
+            {/* Custom Instructions */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t("config.customInstructions")}
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {t("config.customInstructionsTooltip")}
+              </p>
+              <textarea
+                value={config.customInstructions}
+                onChange={(e) => updateConfig({ customInstructions: e.target.value })}
+                placeholder={t("config.customInstructionsPlaceholder")}
+                rows={3}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+              />
+            </div>
+
+            {/* MKTU Classes */}
+            <MKTUSelector
+              classes={mktuClasses}
+              selectedClasses={config.mktuClasses}
+              onSelectionChange={(mktuClasses) => updateConfig({ mktuClasses })}
+              industry={config.industry}
+              language={i18n.language as "en" | "ru"}
+            />
+          </div>
+        )}
       </div>
 
-      {/* MKTU Classes */}
-      <MKTUSelector
-        classes={mktuClasses}
-        selectedClasses={config.mktuClasses}
-        onSelectionChange={(mktuClasses) => updateConfig({ mktuClasses })}
-        industry={config.industry}
-        language={i18n.language as "en" | "ru"}
-      />
-
-      {/* Next Button */}
-      <div className="flex justify-end pt-4">
+      {/* Next Button - Improved hierarchy */}
+      <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={handleNext}
           disabled={!config.industry || config.keywords.length === 0}
-          className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-8 py-3.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none flex items-center gap-2"
         >
-          {t("actions.next")}
+          {t("actions.continueToGenerate")}
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </button>
       </div>

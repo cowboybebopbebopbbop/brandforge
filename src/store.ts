@@ -43,6 +43,7 @@ export interface TabData {
 export interface Settings {
   provider: "gemini" | "openai" | "claude";
   apiKey: string;
+  geminiModel?: "gemini-2.0-flash-exp" | "gemini-1.5-flash" | "gemini-1.5-pro" | "gemini-1.0-pro";
   language: "en" | "ru";
   theme: "light" | "dark" | "system";
   resultsPerGeneration: 50 | 100 | 150;
@@ -101,6 +102,7 @@ const createDefaultTab = (id: string, name: string): TabData => ({
 const defaultSettings: Settings = {
   provider: "gemini",
   apiKey: "",
+  geminiModel: "gemini-2.0-flash-exp",
   language: "en",
   theme: "system",
   resultsPerGeneration: 100,

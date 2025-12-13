@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "./store";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -8,16 +8,28 @@ import Wizard from "./components/Wizard/Wizard";
 import Settings from "./components/Settings/Settings";
 import Header from "./components/Header/Header";
 import Library from "./components/Library/Library";
+import SetupBanner from "./components/SetupBanner/SetupBanner";
+import OnboardingModal from "./components/OnboardingModal/OnboardingModal";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 
 function AppContent() {
   const { i18n } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { settings, updateSettings } = useAppStore();
   
   // Enable Firebase sync
   useFirebaseSync();
+
+  // Show onboarding on first visit
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+      localStorage.setItem('hasSeenOnboarding', 'true');
+    }
+  }, []);
 
   const toggleLanguage = () => {
     const newLang = settings.language === "en" ? "ru" : "en";
@@ -40,14 +52,25 @@ function AppContent() {
           <Library />
         ) : (
           <>
+            {!settings.apiKey && <SetupBanner onOpenSettings={() => setShowSettings(true)} />}
             <TabManager />
-            <Wizard />
+            <Wizard onOpenSettings={() => setShowSettings(true)} />
           </>
         )}
       </main>
 
       {showSettings && (
         <Settings onClose={() => setShowSettings(false)} />
+      )}
+
+      {showOnboarding && (
+        <OnboardingModal
+          onClose={() => setShowOnboarding(false)}
+          onOpenSettings={() => {
+            setShowOnboarding(false);
+            setShowSettings(true);
+          }}
+        />
       )}
     </div>
   );

@@ -12,6 +12,8 @@ export default function GenerateStep() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [isPromptEdited, setIsPromptEdited] = useState(false);
   const [useFeedback, setUseFeedback] = useState(true);
+  const [animatingFavorite, setAnimatingFavorite] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Build the default prompt from config
   const buildDefaultPrompt = (includeFeedback: boolean = true) => {
@@ -193,6 +195,7 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
   const { config, generatedNames, isGenerating } = currentTab;
 
   const startGeneration = async () => {
+    setError(null);
     updateCurrentTab({ isGenerating: true, generatedNames: [] });
 
     // Combine selected tones with custom tone
@@ -224,14 +227,15 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
           count: settings.resultsPerGeneration,
         },
         settings.apiKey,
-        settings.provider
+        settings.provider,
+        settings.geminiModel
       );
 
       updateCurrentTab({ generatedNames: names, isGenerating: false });
     } catch (error: any) {
       console.error("Generation failed:", error);
       const errorMessage = error?.message || t("errors.generationFailed");
-      alert(`${t("errors.generationFailed")}\n\n${errorMessage}`);
+      setError(`${t("errors.generationFailed")}: ${errorMessage}`);
       updateCurrentTab({ isGenerating: false });
     }
   };
@@ -267,6 +271,10 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
   const handleToggleFavorite = (item: GeneratedName, e: React.MouseEvent) => {
     e.stopPropagation();
     toggleFavorite(item);
+    
+    // Trigger animation
+    setAnimatingFavorite(item.name);
+    setTimeout(() => setAnimatingFavorite(null), 600);
   };
 
   const isFavorited = (name: string) => {
@@ -287,9 +295,10 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
 
   const handleNext = () => {
     if (selectedCount === 0) {
-      alert(t("errors.noNamesSelected"));
+      setError(t("errors.noNamesSelected"));
       return;
     }
+    setError(null);
     updateCurrentTab({ step: 3 });
   };
 
@@ -313,6 +322,30 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
 
   return (
     <div className="space-y-6">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                {error}
+              </p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Feedback Indicator */}
       {hasFeedback && generatedNames.length === 0 && !isGenerating && (
         <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
@@ -592,16 +625,30 @@ Present all ${settings.resultsPerGeneration} names in a numbered list.`;
                     {/* Favorite Button */}
                     <button
                       onClick={(e) => handleToggleFavorite(item, e)}
-                      className={`p-1.5 rounded-lg transition-colors ${
+                      className={`p-1.5 rounded-lg transition-all relative ${
                         isFavorited(item.name)
                           ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
                           : "text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
+                      } ${animatingFavorite === item.name ? "animate-bounce" : ""}`}
                       title={t("actions.favorite")}
                     >
-                      <svg className="w-4 h-4" fill={isFavorited(item.name) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <svg 
+                        className={`w-4 h-4 transition-all ${
+                          animatingFavorite === item.name ? "scale-125" : ""
+                        }`} 
+                        fill={isFavorited(item.name) ? "currentColor" : "none"} 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        viewBox="0 0 24 24"
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                       </svg>
+                      {/* Sparkle effect on favorite */}
+                      {animatingFavorite === item.name && isFavorited(item.name) && (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="absolute w-8 h-8 bg-yellow-400 rounded-full opacity-75 animate-ping"></span>
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>

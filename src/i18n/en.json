@@ -78,6 +78,9 @@
     "selectAll": "Select All",
     "clearAll": "Clear All",
     "selectMultiple": "select multiple",
+    "selected": "selected",
+    "advancedOptions": "Advanced Options",
+    "advancedOptionsDesc": "Fine-tune character length, word count, creativity, and more",
     "customTonePlaceholder": "Or add custom tone/style...",
     "customLengthPlaceholder": "Or add custom length requirement...",
     "customCharLengthPlaceholder": "Or add custom character length...",
@@ -96,6 +99,7 @@
   "actions": {
     "generate": "Generate Names",
     "generating": "Generating...",
+    "continueToGenerate": "Continue to Generate",
     "regenerate": "Regenerate",
     "regenerateWithNotes": "With Feedback",
     "checkSelected": "Check Selected",
@@ -141,11 +145,45 @@
     "clipboard": "Copy to Clipboard",
     "copied": "Copied!"
   },
+  "setup": {
+    "title": "⚙️ Setup Required",
+    "description": "Configure your AI API key to start generating brand names. This will take less than a minute.",
+    "configure": "Configure API Key"
+  },
+  "onboarding": {
+    "step1": {
+      "title": "Welcome to BrandForge!",
+      "description": "Generate professional brand names powered by AI in seconds"
+    },
+    "step2": {
+      "title": "Configure Your Preferences",
+      "description": "Set your industry, keywords, tone, and style to get tailored results"
+    },
+    "step3": {
+      "title": "Generate & Refine",
+      "description": "Create unlimited brand names and refine them with feedback"
+    },
+    "step4": {
+      "title": "Check & Save",
+      "description": "Verify domain/trademark availability and save your favorites"
+    },
+    "skip": "Skip",
+    "next": "Next",
+    "close": "Close",
+    "getStarted": "Get Started"
+  },
   "settings": {
     "title": "Settings",
     "provider": "AI Provider",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "Enter your API key",
+    "geminiModel": "Gemini Model",
+    "models": {
+      "gemini-2.0-flash-exp": "Gemini 2.0 Flash (Experimental) - Newest, fastest",
+      "gemini-1.5-flash": "Gemini 1.5 Flash - Fast, balanced",
+      "gemini-1.5-pro": "Gemini 1.5 Pro - Best quality",
+      "gemini-1.0-pro": "Gemini 1.0 Pro - Legacy"
+    },
     "language": "Interface Language",
     "theme": "Theme",
     "themes": {
