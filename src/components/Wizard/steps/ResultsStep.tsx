@@ -193,7 +193,12 @@ export default function ResultsStep() {
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{riskIcons[name.riskLevel!]}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{riskIcons[name.riskLevel!]}</span>
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                    {name.name.substring(0, 2).toUpperCase()}
+                  </div>
+                </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
                     {name.name}

@@ -5,6 +5,80 @@
 
 import { GeneratedName } from "./store";
 
+// Generate learning summary from generation history
+export async function generateLearningSummary(
+  generatedNames: GeneratedName[],
+  favoritedNames: GeneratedName[],
+  apiKey: string,
+  provider: "gemini" | "openai" | "claude",
+  model?: string
+): Promise<string> {
+  const likedNames = generatedNames.filter(n => n.liked);
+  const dislikedNames = generatedNames.filter(n => n.disliked);
+  const clientApproved = favoritedNames.filter(f => f.clientFeedback?.status === 'approved');
+  const clientRejected = favoritedNames.filter(f => f.clientFeedback?.status === 'rejected');
+
+  const prompt = `You are a brand naming pattern analyst. Analyze this naming session data and extract KEY LEARNINGS.
+
+# GENERATED NAMES (${generatedNames.length} total):
+${generatedNames.slice(0, 30).map(n => `- ${n.name} (${n.type})`).join('\n')}
+
+# LIKED by Designer (${likedNames.length}):
+${likedNames.map(n => `- ${n.name}: ${n.rationale}`).join('\n')}
+
+# DISLIKED by Designer (${dislikedNames.length}):
+${dislikedNames.map(n => `- ${n.name}`).join('\n')}
+
+# CLIENT APPROVED (${clientApproved.length}):
+${clientApproved.map(n => `- ${n.name}: ${n.clientFeedback?.comments || 'No comment'}`).join('\n')}
+
+# CLIENT REJECTED (${clientRejected.length}):
+${clientRejected.map(n => `- ${n.name}: ${n.clientFeedback?.comments || 'No comment'}`).join('\n')}
+
+---
+
+Provide a CONCISE analysis (max 150 words) in this format:
+
+**WORKING PATTERNS:**
+- [Pattern 1: e.g., "6-8 letters, ends in -ly, nature metaphors"]
+- [Pattern 2]
+- [Pattern 3]
+
+**AVOID:**
+- [Anti-pattern 1: e.g., "Tech jargon, -ify suffixes, abstract compounds"]
+- [Anti-pattern 2]
+
+**NEXT DIRECTION:**
+- [Specific suggestion for exploration]
+
+Be specific, actionable, and focus on LINGUISTIC patterns (roots, suffixes, phonetics, structure).`;
+
+  try {
+    if (provider === "gemini") {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash-exp'}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 500,
+            },
+          }),
+        }
+      );
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Pattern analysis unavailable.";
+    }
+    return "Summary generation not implemented for this provider.";
+  } catch (error) {
+    console.error("Learning summary generation failed:", error);
+    return "Pattern analysis unavailable.";
+  }
+}
+
 export interface GenerationRequest {
   industry: string;
   keywords: string[];
@@ -46,28 +120,47 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   let currentName = '';
   let currentType: GeneratedName['type'] = 'invented';
   let currentRationale = '';
+  let hasValidName = false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-    // Skip empty lines
-    if (!line) continue;
+    // Skip empty lines and markdown artifacts
+    if (!line || line === '---' || line.startsWith('```')) continue;
     
     // Match pattern: "1. **Name:** ActualBrandName" or "**Name:** ActualBrandName"
     const nameFieldMatch = line.match(/^(?:\d+\.\s*)?\*?\*?Name:?\*?\*?\s*(.+)$/i);
     if (nameFieldMatch) {
-      // Save previous name if exists
-      if (currentName) {
+      // Save previous name if exists and valid
+      if (currentName && hasValidName && currentName.length > 1) {
+        // Ensure rationale is meaningful and substantial
+        const cleanRationale = currentRationale.trim();
+        let meaningfulRationale = cleanRationale;
+        
+        // Check if rationale is empty, too short, or just a type name/fragment
+        if (!cleanRationale || 
+            cleanRationale.length < 15 || 
+            cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign|creative brand name|suggestion|comb|means|combines|refers|represents)$/i)) {
+          meaningfulRationale = `${currentName}: A ${currentType} brand name thoughtfully crafted to communicate brand essence and resonate with target audience.`;
+        }
+        
+        // Replace single-word fragments with full sentences
+        if (cleanRationale.match(/^\w{3,8}$/)) {
+          meaningfulRationale = `${currentName} is a ${currentType} brand name designed for memorable brand identity and market differentiation.`;
+        }
+        
         names.push({
           name: currentName,
           type: currentType,
-          rationale: currentRationale.trim() || 'Creative brand name suggestion',
+          rationale: meaningfulRationale,
           selected: false
         });
         currentRationale = '';
         currentType = 'invented';
+        hasValidName = false;
       }
       currentName = nameFieldMatch[1].replace(/\*+/g, '').trim();
+      hasValidName = currentName.length > 0 && currentName.length < 50; // Validate name length
       continue;
     }
     
@@ -75,11 +168,12 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     const typeFieldMatch = line.match(/^\*?\s*\*?\*?Type:?\*?\*?\s*(.+)$/i);
     if (typeFieldMatch) {
       const typeText = typeFieldMatch[1].replace(/\*+/g, '').trim().toLowerCase();
-      if (typeText.includes('acronym')) currentType = 'acronym';
-      else if (typeText.includes('compound')) currentType = 'compound';
-      else if (typeText.includes('descriptive')) currentType = 'descriptive';
-      else if (typeText.includes('foreign')) currentType = 'foreign';
-      else currentType = 'invented';
+      // More strict type matching to avoid mis-classification
+      if (typeText === 'acronym' || typeText.startsWith('acronym')) currentType = 'acronym';
+      else if (typeText === 'compound' || typeText.startsWith('compound')) currentType = 'compound';
+      else if (typeText === 'descriptive' || typeText.startsWith('descriptive')) currentType = 'descriptive';
+      else if (typeText === 'foreign' || typeText.startsWith('foreign')) currentType = 'foreign';
+      else currentType = 'invented'; // Default to invented for safety
       continue;
     }
     
@@ -93,20 +187,29 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     // Fallback: Match simple patterns like "1. BrandName - Rationale" or "1. **BrandName** - Rationale"
     const simpleMatch = line.match(/^\d+\.\s+\*?\*?([^*:\-\n]+)\*?\*?\s*[\-:]?\s*(.*)$/);
     if (simpleMatch && !line.toLowerCase().includes('name:') && !line.toLowerCase().includes('type:') && !line.toLowerCase().includes('rationale:')) {
-      // Save previous name if exists
-      if (currentName) {
+      // Save previous name if exists and valid
+      if (currentName && hasValidName && currentName.length > 1) {
+        const cleanRationale = currentRationale.trim();
+        const meaningfulRationale = cleanRationale && 
+          cleanRationale.length > 10 && 
+          !cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign)$/i)
+          ? cleanRationale
+          : 'Creative brand name suggestion';
+        
         names.push({
           name: currentName,
           type: currentType,
-          rationale: currentRationale.trim() || 'Creative brand name suggestion',
+          rationale: meaningfulRationale,
           selected: false
         });
         currentRationale = '';
         currentType = 'invented';
+        hasValidName = false;
       }
       
       currentName = simpleMatch[1].trim();
       currentRationale = simpleMatch[2].trim();
+      hasValidName = currentName.length > 0 && currentName.length < 50;
       
       // Detect type from rationale
       const combinedText = currentRationale.toLowerCase();
@@ -124,21 +227,51 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     }
   }
   
-  // Add last name
-  if (currentName) {
+  // Add last name if valid
+  if (currentName && hasValidName && currentName.length > 1) {
+    const cleanRationale = currentRationale.trim();
+    let meaningfulRationale = cleanRationale;
+    
+    // Stronger validation for rationale quality
+    if (!cleanRationale || 
+        cleanRationale.length < 15 || 
+        cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign|creative|suggestion)$/i)) {
+      meaningfulRationale = `${currentName}: A ${currentType} brand name combining creative elements for strategic positioning.`;
+    }
+    
     names.push({
       name: currentName,
       type: currentType,
-      rationale: currentRationale.trim() || 'Creative brand name suggestion',
+      rationale: meaningfulRationale,
       selected: false
     });
   }
   
-  return names.slice(0, count);
+  // Final validation: ensure ALL names have substantial rationales
+  const preValidated = names.filter(n => 
+    n.name && 
+    n.name.length > 1 && 
+    n.name.length < 50
+  );
+  
+  const validNames = preValidated.map(name => {
+    // Check rationale quality
+    if (!name.rationale || 
+        name.rationale.length < 15 || 
+        name.rationale.toLowerCase().match(/^(creative brand name suggestion|creative brand name|suggestion)$/i)) {
+      return {
+        ...name,
+        rationale: `${name.name}: A ${name.type} brand name combining creative elements for memorable impact and strategic positioning.`
+      };
+    }
+    return name;
+  });
+  
+  return validNames.slice(0, count);
 };
 
 // Call Google Gemini API
-async function callGemini(prompt: string, apiKey: string, count: number, model: string = "gemini-2.0-flash-exp"): Promise<GeneratedName[]> {
+async function callGemini(prompt: string, apiKey: string, count: number, model: string = "gemini-2.0-flash-exp", temperature: number = 0.9): Promise<GeneratedName[]> {
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -150,7 +283,7 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
             parts: [{ text: prompt }]
           }],
           generationConfig: {
-            temperature: 0.9,
+            temperature: temperature, // Use provided temperature
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 2048,
@@ -182,7 +315,7 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
 }
 
 // Call OpenAI API
-async function callOpenAI(prompt: string, apiKey: string, count: number): Promise<GeneratedName[]> {
+async function callOpenAI(prompt: string, apiKey: string, count: number, temperature: number = 0.9): Promise<GeneratedName[]> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -196,7 +329,7 @@ async function callOpenAI(prompt: string, apiKey: string, count: number): Promis
           { role: 'system', content: 'You are a professional brand naming expert.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.9,
+        temperature: temperature,
         max_tokens: 2000
       })
     });
@@ -224,7 +357,7 @@ async function callOpenAI(prompt: string, apiKey: string, count: number): Promis
 }
 
 // Call Anthropic Claude API
-async function callClaude(prompt: string, apiKey: string, count: number): Promise<GeneratedName[]> {
+async function callClaude(prompt: string, apiKey: string, count: number, temperature: number = 0.9): Promise<GeneratedName[]> {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -240,7 +373,7 @@ async function callClaude(prompt: string, apiKey: string, count: number): Promis
           role: 'user',
           content: prompt
         }],
-        temperature: 0.9
+        temperature: temperature
       })
     });
     
@@ -271,14 +404,15 @@ export async function generateNames(
   request: GenerationRequest,
   apiKey: string,
   provider: string,
-  geminiModel?: string
+  geminiModel?: string,
+  temperature?: number // Add temperature parameter
 ): Promise<GeneratedName[]> {
   const prompt = request.full_prompt || `Generate ${request.count} creative brand names for a ${request.industry} company. Keywords: ${request.keywords.join(', ')}. Tone: ${request.tones.join(', ')}. Length: ${request.lengths.join(', ')}. ${request.custom_instructions}`;
   
   try {
     switch (provider.toLowerCase()) {
       case 'gemini':
-        return await callGemini(prompt, apiKey, request.count, geminiModel || "gemini-2.0-flash-exp");
+        return await callGemini(prompt, apiKey, request.count, geminiModel || "gemini-2.0-flash-exp", temperature);
       case 'openai':
         return await callOpenAI(prompt, apiKey, request.count);
       case 'claude':

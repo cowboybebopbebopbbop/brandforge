@@ -21,6 +21,8 @@ export default function Library() {
   const [checkedNames, setCheckedNames] = useState<Set<string>>(new Set());
   const [feedbackModalName, setFeedbackModalName] = useState<GeneratedName | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editRationale, setEditRationale] = useState("");
 
   // Get favorites for current project only
   const projectFavorites = getFavoritesForCurrentProject();
@@ -77,6 +79,22 @@ export default function Library() {
 
   const handleCreateCustom = (name: string, rationale: string) => {
     addCustomFavorite(name, rationale);
+  };
+
+  const startEditing = (item: GeneratedName) => {
+    setEditingName(item.name);
+    setEditRationale(item.rationale || "");
+  };
+
+  const saveEdit = (name: string) => {
+    updateFavoriteName(name, { rationale: editRationale });
+    setEditingName(null);
+    setEditRationale("");
+  };
+
+  const cancelEdit = () => {
+    setEditingName(null);
+    setEditRationale("");
   };
 
   const checkFavorites = async () => {
@@ -237,10 +255,47 @@ export default function Library() {
                 </button>
               </div>
               
-              {item.rationale && (
+              {item.rationale && editingName !== item.name && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                   {item.rationale}
                 </p>
+              )}
+
+              {/* Edit Mode */}
+              {editingName === item.name ? (
+                <div className="mb-3">
+                  <textarea
+                    value={editRationale}
+                    onChange={(e) => setEditRationale(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                    rows={3}
+                    placeholder={t("library.editRationalePlaceholder", { defaultValue: "Edit the name description/rationale..." })}
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => saveEdit(item.name)}
+                      className="flex-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      {t("actions.save", { defaultValue: "Save" })}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="flex-1 px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    >
+                      {t("actions.cancel", { defaultValue: "Cancel" })}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => startEditing(item)}
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline mb-3 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  {t("library.editRationale", { defaultValue: "Edit description" })}
+                </button>
               )}
 
               {/* Client Feedback Display */}

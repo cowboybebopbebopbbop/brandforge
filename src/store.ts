@@ -136,6 +136,8 @@ export interface TabData {
   // PRD S2: Association workshop data
   associationWorkshop?: AssociationWorkshopData;
   generatedNames: GeneratedName[];
+  generationCount: number; // Track how many times generation was run
+  learningSummary?: string; // AI-generated analysis of working patterns (created every 3 generations)
   isGenerating: boolean;
   isChecking: boolean;
 }
@@ -147,6 +149,7 @@ export interface Settings {
   language: "en" | "ru";
   theme: "light" | "dark" | "system";
   resultsPerGeneration: 50 | 100 | 150;
+  creativityTemperature: 0.3 | 0.5 | 0.8 | 1.0; // Low/Balanced/High/Maximum creativity
 }
 
 interface AppState {
@@ -223,6 +226,8 @@ const createDefaultTab = (id: string, name: string): TabData => ({
     isCorporate: false,
   },
   generatedNames: [],
+  generationCount: 0,
+  learningSummary: undefined,
   isGenerating: false,
   isChecking: false,
 });
@@ -234,6 +239,7 @@ const defaultSettings: Settings = {
   language: "en",
   theme: "system",
   resultsPerGeneration: 100,
+  creativityTemperature: 0.8, // Default: High creativity for initial ideation
 };
 
 let tabCounter = 0;  // Start from 0, will increment when creating first tab

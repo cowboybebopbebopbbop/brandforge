@@ -232,7 +232,20 @@
     "remove": "Remove",
     "cancel": "Cancel",
     "save": "Save",
-    "add": "Add"
+    "add": "Add",
+    "backToConfigure": "← Back to Configure",
+    "backToWorkshop": "← Back to Workshop"
+  },
+  "generation": {
+    "exhaustionTitle": "Expand your creative territory?",
+    "exhaustionDescription": "After {{count}} generations, the AI might be running out of fresh ideas in current semantic territories. Consider:",
+    "exhaustionTip1": "Adding new keywords in Configure step",
+    "exhaustionTip2": "Revisiting Workshop with fresh associations",
+    "exhaustionTip3": "Trying a different abstraction level",
+    "exhaustionTip4": "Changing the creativity level to 'High'",
+    "learningSummaryTitle": "📊 AI Learning Summary",
+    "learningSummaryDesc": "Pattern analysis from {{count}} generations",
+    "analyzingPatterns": "Analyzing naming patterns..."
   },
   "names": {
     "generated": "Generated Names",
@@ -310,6 +323,8 @@
       "system": "System"
     },
     "resultsCount": "Results per generation",
+    "creativityTemperature": "AI Creativity Level",
+    "temperatureDesc": "Higher values make output more random and creative. Lower values focus on safe, predictable names.",
     "save": "Save Settings",
     "saved": "Saved!"
   },

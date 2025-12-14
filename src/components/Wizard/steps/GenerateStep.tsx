@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../../store";
-import { generateNames } from "../../../api";
+import { generateNames, generateLearningSummary } from "../../../api";
 import type { GeneratedName } from "../../../store";
 
 export default function GenerateStep() {
@@ -14,6 +14,7 @@ export default function GenerateStep() {
   const [isPromptEdited, setIsPromptEdited] = useState(false);
   const [useFeedback, setUseFeedback] = useState(true);
   const [animatingFavorite, setAnimatingFavorite] = useState<string | null>(null);
+  const [expandedRationale, setExpandedRationale] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Build the default prompt from config
@@ -60,25 +61,59 @@ export default function GenerateStep() {
     // Build the complete prompt
     let prompt = `# ROLE
 
-You are acting as a team of senior brand professionals: a Brand Designer, Brand Identity Designer, and Brand Strategist in one.
-
-Your approach:
-• You think in terms of positioning, target audience, competitive landscape, and long-term brand architecture.
-• You avoid names that are hard to pronounce, spell, or remember in English.
-• You avoid obvious negative, vulgar, or confusing associations.
-• You deliberately explore different directions (corporate, playful, abstract, techy, premium, etc.), but always stay within a professional tone.
-• You aim for names that could realistically be used for a modern brand with a strong, distinctive identity.
-
-When you generate name ideas, always:
-• Treat each name as if it were going into a real client presentation.
-• Provide a short, strategic explanation for every name that clarifies the intended brand feeling, positioning, and meaning.
+You are a senior brand naming strategist using a structured creative process. You DON'T just generate names—you THINK through the naming process systematically using Chain-of-Thought reasoning.
 
 ---
 
-# TASK
+# PHASE 1: STRATEGIC ANALYSIS (Complete this BEFORE generating names)
 
-Generate ${settings.resultsPerGeneration} unique brand names for a ${config.industry || "business"} company.
+## 1.1 Positioning Essence
+First, identify the ONE core concept that captures this brand's soul:
+- Industry: ${config.industry || "business"}
+- North Star: ${config.northStar || "Not specified"}
 
+## 1.2 Semantic Territory Mapping
+Identify 5 DISTINCT semantic fields to explore (avoid overlap):
+1. **Direct/Functional** - what the product literally does
+2. **Emotional/Aspirational** - how customers want to feel
+3. **Metaphorical** - unexpected comparisons from nature, science, art
+4. **Abstract/Invented** - new words, creative morphology
+5. **Cultural/Symbolic** - archetypal references, cultural symbols
+
+## 1.3 Root Word Diversity Check
+⚠️ CRITICAL: Before generating, mentally list 20+ UNIQUE root words you'll use.
+DO NOT rely on common naming roots like: well, zen, peak, mind, flow, bright, smart, pro, max, plus, core, hub, sync, vibe, spark, nova, nest, glow, edge, wave.
+Instead, find FRESH roots from: industry-specific terminology, Latin/Greek, nature, architecture, music, astronomy, mythology, textures, materials, movement verbs, emotional states.
+
+**🚫 ANTI-PATTERN: ROOT REPETITION WITHIN ONE GENERATION**
+- NEVER generate multiple names with the same root in ONE generation
+- Example BAD: PranaV, PranaFlow, Prana Core (all use "Prana")
+- Example BAD: VayuV, ShivaV, DhyanaV, SamadhiV (all use V-suffix pattern)
+- Example GOOD: PranaV, Elan, Qi, Anima, Esprit (diverse roots, same essence)
+
+**✅ DIVERSITY REQUIREMENT:**
+- Each of the ${settings.resultsPerGeneration} names must use a DIFFERENT linguistic root
+- Only repeat a root if user explicitly LIKED a name with that root in previous generations
+- Vary suffixes: if you use -V once, don't use it again in same generation
+- Vary prefixes: if you use Eco- once, find alternatives (Bio-, Verde-, Green-, Natura-)
+
+${(currentTab.generationCount || 0) >= 5 ? `
+⚠️ **LANGUAGE DRIFT WARNING (Generation ${currentTab.generationCount}):**
+You're drifting into Sanskrit/Yoga terminology (Prana, Shanti, Nirvana, Turiya, Brahma, etc.).
+**STOP THIS IMMEDIATELY** unless the brand is specifically yoga/meditation related.
+Stay focused on the original brief and industry context.
+Provide FULL, MEANINGFUL rationales for each name (not just "Comb" or fragments).
+` : ''}
+
+${currentTab.learningSummary ? `
+---
+
+# 📊 LEARNED PATTERNS FROM PREVIOUS SESSIONS
+
+${currentTab.learningSummary}
+
+**USE THESE INSIGHTS:** Apply the working patterns, avoid the anti-patterns, and explore the suggested directions.
+` : ''}
 ---
 
 # REQUIREMENTS
@@ -258,8 +293,13 @@ Generate ${settings.resultsPerGeneration} unique brand names for a ${config.indu
       }
       
       if (workshop.crossedAssociations.length > 0) {
-        prompt += `\n\n**💡 SEED IDEAS (use these as inspiration for name generation):**\n${workshop.crossedAssociations.map(c => `- ${c.seedIdea}`).join("\n")}`;
-        prompt += `\n\n**Use these seed ideas to generate creative names that capture the crossed associations.**`;
+        const seedIdeas = workshop.crossedAssociations.map(c => c.seedIdea);
+        prompt += `\n\n**💡 SEED IDEAS FROM WORKSHOP (use as INSPIRATION, not output):**\n${seedIdeas.map(s => `- "${s}"`).join("\n")}`;
+        prompt += `\n\n**⚠️ IMPORTANT:** These seed ideas are the user's OWN creations. 
+- DO NOT output these exact seed ideas as your generated names
+- Use them as INSPIRATION to understand the creative direction
+- Generate NEW names that capture the ESSENCE of these ideas but are DIFFERENT words
+- The user already has these - they want NEW variations inspired by them`;
       }
     }
 
@@ -291,8 +331,40 @@ This is feedback from the actual client/stakeholder. This takes PRECEDENCE over 
           prompt += `\n**Strategy for approved names:**
 - These names represent the WINNING direction from client perspective
 - Analyze what made these succeed: tone, structure, meaning, cultural fit
-- Generate new names that capture the SAME essence but are different words
-- This is your North Star for this project
+
+**🚫 ABSOLUTE PROHIBITIONS (ZERO TOLERANCE):**
+1. **NO WORD RECYCLING:** NEVER use ANY word from approved names in ANY form
+   - If "Verdi" approved → BAN: Verdi, Verde, Verdant, VerdiFlow, GreenVerdi, VerdiNest
+   - If "Prana" approved → BAN: Prana, PranaV, PranaFlow, ShantiV, VayuV, any Sanskrit with V-suffix
+   - If "Tejas" approved → BAN: Tejas, Vajra, Agni, any related Sanskrit terms
+
+2. **NO ROOT BORROWING:** Approved name's root is BANNED from all derivatives
+   - If "Verdi" (Italian green) → DON'T use Verde, Vert, Verdure, any green-root
+   - If "Zen" approved → DON'T use Zenith, Zephyr, any zen-root
+
+3. **NO CULTURAL REPETITION IN SAME GENERATION:** If approved name is Sanskrit/Yoga:
+   - Generate MAX 1-2 Sanskrit-inspired names per generation
+   - Explore OTHER cultures: Latin botanical, Greek mythology, Japanese nature, Arabic poetry
+
+4. **NO SUFFIX COPYING:** Don't replicate suffix patterns from approved names
+   - If "PranaV" approved → DON'T make all names with -V suffix (ShantiV, VayuV)
+   - Vary your linguistic structures
+
+**✅ WHAT YOU SHOULD DO:**
+- **Essence Analysis:** Why did "Verdi" work? (Short, elegant, nature-evoked, Italian sophistication)
+- **Parallel Exploration:** Find OTHER words with SAME qualities but DIFFERENT roots
+  - Verdi = nature + elegance → Try "Sorrel" (herb), "Linden" (tree), "Quince" (fruit)
+- **Cross-Cultural Mining:** If approved names are Sanskrit → explore Latin, Greek, Japanese
+- **Attribute Matching:** Match the FEELING (calm, strong, fresh) with NEW vocabulary
+
+**EXAMPLES OF CORRECT APPROACH:**
+- Client approved "Verdi" (green, Italian, elegant)
+  ✅ GOOD: Sorrel, Linden, Quince, Cypress, Thyme (different roots, same feeling)
+  ❌ BAD: VerdiFlow, GreenCore, Verdant, EcoVerde (recycling approved word)
+
+- Client approved "PranaV" (Sanskrit vitality)
+  ✅ GOOD: Elan (French), Qi (Chinese), Esprit (French), Anima (Latin)
+  ❌ BAD: ShantiV, VayuV, NirvanaV, Brahma (same culture + suffix pattern)
 \n`;
         }
 
@@ -334,31 +406,65 @@ This is feedback from the actual client/stakeholder. This takes PRECEDENCE over 
       }
 
       if (dislikedNames.length > 0) {
-        // Extract words and roots from disliked names
+        // Extract words and roots from disliked names - MORE AGGRESSIVE
         const dislikedWords = new Set<string>();
+        const dislikedRoots = new Set<string>();
         dislikedNames.forEach(name => {
           // Split by common separators and spaces
           const words = name.name.split(/[\s\-_\.]+/);
           words.forEach(word => {
-            dislikedWords.add(word.toLowerCase());
-            // Add root (first 4+ chars for longer words)
-            if (word.length > 5) {
-              dislikedWords.add(word.substring(0, Math.floor(word.length * 0.6)).toLowerCase());
+            const lowerWord = word.toLowerCase();
+            dislikedWords.add(lowerWord);
+            // Add multiple root variations
+            if (word.length > 4) {
+              dislikedRoots.add(lowerWord.substring(0, 4));
+              dislikedRoots.add(lowerWord.substring(0, 5));
+            }
+            if (word.length > 6) {
+              dislikedRoots.add(lowerWord.substring(0, 6));
             }
           });
         });
 
-        prompt += `\n**❌ DISLIKED Names - STRICTLY FORBIDDEN:**\n`;
-        dislikedNames.forEach(name => {
-          prompt += `• ${name.name} - ${name.rationale || 'User disliked this'}\n`;
+        // DETECT OVERUSED ROOTS: If many names share the same root pattern, ban it
+        const rootFrequency = new Map<string, number>();
+        allGeneratedNames.forEach(name => {
+          const words = name.name.split(/[\s\-_\.]+/);
+          words.forEach(word => {
+            if (word.length > 5) {
+              const root = word.toLowerCase().substring(0, 5);
+              rootFrequency.set(root, (rootFrequency.get(root) || 0) + 1);
+            }
+          });
         });
         
-        prompt += `\n**CRITICAL RULES FOR DISLIKED NAMES:**
-1. DO NOT use any of the disliked names above, even with modifications
-2. DO NOT use ANY words or roots from disliked names: ${Array.from(dislikedWords).join(", ")}
-3. DO NOT create variations by adding/removing words to/from disliked names
-4. DO NOT use similar sounding words or translations of disliked names
-5. If a name was disliked, that entire word/root is now BANNED - explore completely different directions
+        // If a root appears in 5+ generated names, ban it
+        rootFrequency.forEach((count, root) => {
+          if (count >= 5) {
+            dislikedRoots.add(root);
+          }
+        });
+
+        prompt += `\n**🚫 ABSOLUTE BAN LIST - DISLIKED NAMES:**\n`;
+        dislikedNames.forEach(name => {
+          prompt += `• "${name.name}" - BANNED\n`;
+        });
+        
+        prompt += `\n**⛔ BANNED WORDS (do not use in ANY form):**
+${Array.from(dislikedWords).map(w => `• ${w}`).join('\n')}
+
+**⛔ BANNED ROOT PATTERNS (do not use words starting with):**
+${Array.from(dislikedRoots).map(r => `• ${r}*`).join(', ')}
+
+**STRICT DISLIKE ENFORCEMENT RULES:**
+1. ❌ NEVER use any word from the banned list, even modified (no plurals, no prefixes, no suffixes)
+2. ❌ NEVER use any word that STARTS with a banned root pattern
+3. ❌ NEVER use synonyms or translations of banned words
+4. ❌ NEVER combine banned words with other words
+5. ❌ If "Zen" is banned, also ban: Zenith, ZenFlow, MyZen, Zenly, etc.
+6. ❌ If "Peak" is banned, also ban: Peaked, Peakly, PeakFlow, SunPeak, etc.
+
+**BEFORE OUTPUTTING ANY NAME:** Check if it contains ANY banned word or root. If yes, DISCARD and generate a completely different name.
 
 `;
       }
@@ -384,6 +490,14 @@ This is feedback from the actual client/stakeholder. This takes PRECEDENCE over 
 - Go WIDER: explore adjacent concepts, lateral thinking
 - NEVER repeat rejected patterns or words
 - Treat each generation as a fresh creative exploration
+
+**🚫 ROOT DIVERSITY ENFORCEMENT:**
+- MAX 2 names per root word in ONE generation
+  - If using "zen" root → MAX: ZenFlow, Zenith (stop here, move to different root)
+  - If using "veda" root → MAX: VedaFlow, Vedanta (stop here, explore NEW territory)
+- VARIETY IS MANDATORY: Each generation must use AT LEAST 15+ different root words
+- Track your roots mentally: zen, flow, peak, mind, veda, prana, zen... STOP! Too much repetition
+- If you catch yourself using same root 3+ times → DISCARD and find fresh vocabulary
 `;
     }
 
@@ -406,6 +520,38 @@ For each name, provide the following in a structured format:
    - intercultural_risk: low/medium/high (problematic meanings in other cultures/languages)
 
 Present all ${settings.resultsPerGeneration} names in a numbered list.
+
+**CRITICAL: EVERY NAME MUST HAVE A RATIONALE**
+- NEVER output a name without a rationale
+- Rationale should be 20-40 words explaining the strategic thinking
+- Even on later generations (6+), maintain full rationale quality
+- If you're running low on ideas, that's when rationale becomes MORE important, not less
+
+**❌ UNACCEPTABLE OUTPUTS:**
+- "Comb" (just one word with no context)
+- Name without rationale
+- Rationale that's a fragment or incomplete sentence
+- Generic descriptions like "Good name" or "Nice option"
+
+**✅ REQUIRED QUALITY STANDARD:**
+Every rationale must include:
+1. What the name means/references
+2. Why it fits the brand positioning
+3. What feeling/impression it creates
+
+**EXAMPLE:**
+❌ BAD: "Verdi - Rationale: Comb"
+✅ GOOD: "Verdi - Rationale: Italian word for 'green,' evoking natural vitality and European sophistication. The single-syllable simplicity makes it memorable while the cultural reference adds depth."
+
+${(currentTab.generationCount || 0) >= 5 ? `
+
+⚠️ **GENERATION ${currentTab.generationCount} QUALITY CHECK:**
+You may be experiencing creative fatigue. This is EXACTLY when quality control matters most.
+- Re-read the brief before generating
+- Take time to write full, thoughtful rationales
+- If inspiration is low, revisit earlier successful patterns
+- NEVER compromise on rationale quality just because this is generation ${currentTab.generationCount}
+` : ''}
 
 **Flag names with medium or high risk** - don't hide them, but mark them clearly so the user can make informed decisions.
 
@@ -436,6 +582,30 @@ ${config.language === 'russian' ? `
 - Consider international appeal and scalability
 `}
 
+${config.isCorporate || (config.communicationChannels && config.communicationChannels.includes('international')) ? `
+**🌍 MULTILINGUAL CULTURAL CHECK (Corporate/International Requirement):**
+
+Since this is a ${config.isCorporate ? 'corporate naming project' : 'brand with international markets'}, each name MUST pass multilingual scrutiny:
+
+1. **Pronunciation Check:** Name should be pronounceable in major languages (English, Spanish, French, German, Chinese, Russian)
+2. **Negative Meaning Check:** Avoid words that:
+   - Sound like profanity in Spanish (pendejo, puta, etc.)
+   - Have negative meanings in French (mort, con, etc.)  
+   - Sound awkward in German compound formation
+   - Resemble unfortunate words in Chinese pinyin
+   - Have negative connotations in Russian
+
+3. **For each name, mentally check:**
+   - Does it sound like a bad word in any major language?
+   - Does the word root have problematic meanings elsewhere?
+   - If YES → Mark with \`intercultural_risk: high\` and explain
+
+4. **Flag explicitly if concerned:**
+   Example: "Mist" (sounds fine in English but means "manure" in German → intercultural_risk: high)
+
+**Your responsibility:** Before outputting ANY name, do a mental multilingual scan. Better to flag potential issues than miss them.
+` : ''}
+
 **WORD COUNT ENFORCEMENT:**
 ${allWordCounts.map(wc => {
   if (wc === 'short') return '- For "1 word" requirement: Generate ONLY single-word names (e.g., "Nike", "Apex", "Zenith")';
@@ -449,8 +619,33 @@ ${allWordCounts.map(wc => {
 **UNIQUENESS & DIVERSITY:**
 - Every name must be COMPLETELY UNIQUE - no repeats from previous generations
 - Check your output: if you see duplicate names, replace them immediately
-- Explore diverse creative directions: different roots, meanings, associations, metaphors
-- Progressive depth: each generation should explore NEW semantic territories
+
+**🎯 ROOT DIVERSITY RULE (CRITICAL - ENFORCED):**
+- **MAXIMUM REPETITION:** Use each root word MAX 1-2 times per generation (of ${settings.resultsPerGeneration} names)
+- **CALCULATION:** If generating 50 names → each root should appear in MAX 2 names (4% repetition)
+- **VIOLATION EXAMPLES:**
+  ❌ "ZenFlow", "ZenithPeak", "ZenCore", "ZenMind", "ZenNest" (5 names with "Zen" = VIOLATION)
+  ❌ "VedaFlow", "VedaWise", "VedaCore", "VedaPeak", "VedaLight" (5 with "Veda" = VIOLATION)
+  ❌ "PranaV", "ShantiV", "VayuV", "ShivaV", "DhyanaV" (5 with V-suffix pattern = VIOLATION)
+
+**✅ GOOD DIVERSITY:**
+  ✅ "ZenFlow", "PeakMind", "CoraLight", "NestFlow", "VerdantPath" (each root once)
+  ✅ "Lumina", "Cascade", "Ember", "Thrive", "Quantum" (all unique roots)
+
+**ENFORCEMENT CHECKLIST (Execute BEFORE final output):**
+1. Count occurrences of each root in your generated list
+2. If ANY root appears 3+ times → REPLACE excess names with different roots
+3. If using cultural vocabulary (Sanskrit/Latin) → MAX 20% of names from that culture
+4. If user LIKED a name with specific root → OK to use that root 2-3 times
+5. **AUTOMATIC REJECTION:** Names sharing 5+ identical roots in single generation
+
+**ROOT EXPANSION STRATEGY:**
+- Don't exhaust one semantic field - rotate through all 5 territories
+- Use synonym dictionaries, not word variations ("peak" → try "summit", "apex", "crest" not "peaked", "peaky")
+- Cross-linguistic exploration: If stuck on English roots → try Latin, Greek, Sanskrit, Japanese
+
+**QUALITY OVER QUANTITY:**
+- Better to generate 40 diverse names than 50 with 10 "Zen-" variants
 
 **QUALITY STANDARDS:**
 - Each name should feel like a real, professional brand
@@ -521,7 +716,8 @@ ${allWordCounts.map(wc => {
         },
         settings.apiKey,
         settings.provider,
-        settings.geminiModel
+        settings.geminiModel,
+        settings.creativityTemperature // Pass temperature to API
       );
 
       // Filter out duplicates from current tab only (project-specific)
@@ -529,15 +725,105 @@ ${allWordCounts.map(wc => {
         currentTab.generatedNames.map(n => n.name.toLowerCase().trim())
       );
       
+      // Also filter out seed ideas from workshop
+      const seedIdeas = new Set(
+        (currentTab.associationWorkshop?.crossedAssociations || [])
+          .map(c => c.seedIdea.toLowerCase().trim())
+      );
+      
       const uniqueNames = names.filter(name => {
         const normalizedName = name.name.toLowerCase().trim();
-        return !allPreviousNames.has(normalizedName);
+        // Filter duplicates AND seed ideas
+        return !allPreviousNames.has(normalizedName) && !seedIdeas.has(normalizedName);
       });
 
-      // If we filtered out too many, keep original but warn
-      const finalNames = uniqueNames.length > Math.floor(names.length * 0.3) ? uniqueNames : names;
+      // ALWAYS use filtered names - seed ideas and duplicates must be excluded
+      // Even if AI generated many duplicates, it's better to show fewer unique names
+      let finalNames = uniqueNames;
 
-      updateCurrentTab({ generatedNames: finalNames, isGenerating: false });
+      // Get liked names from current tab for filtering
+      const likedNames = currentTab.generatedNames.filter((n: GeneratedName) => n.liked);
+
+      // Filter out excessive root variations (Problem 2: too many variations of same root)
+      // Only keep if user liked a name with this root
+      const rootCounts = new Map<string, string[]>();
+      finalNames.forEach(name => {
+        const words = name.name.split(/[\s\-_\.]+/);
+        words.forEach(word => {
+          if (word.length >= 4) {
+            const root = word.toLowerCase().substring(0, 4);
+            if (!rootCounts.has(root)) {
+              rootCounts.set(root, []);
+            }
+            rootCounts.get(root)!.push(name.name);
+          }
+        });
+      });
+
+      // Check if user liked any name with each root
+      const likedRoots = new Set<string>();
+      likedNames.forEach(name => {
+        const words = name.name.split(/[\s\-_\.]+/);
+        words.forEach(word => {
+          if (word.length >= 4) {
+            likedRoots.add(word.toLowerCase().substring(0, 4));
+          }
+        });
+      });
+
+      // Filter: keep max 3 variations per root, unless root is liked
+      const keptNames = new Set<string>();
+      rootCounts.forEach((names, root) => {
+        const isLikedRoot = likedRoots.has(root);
+        const limit = isLikedRoot ? names.length : 3; // No limit if liked
+        names.slice(0, limit).forEach(n => keptNames.add(n));
+      });
+
+      finalNames = finalNames.filter(name => keptNames.has(name.name));
+
+      // Filter Sanskrit/Yoga terms if generation count > 5 (Problem 3)
+      if ((currentTab.generationCount || 0) >= 5) {
+        const sanskritPattern = /\b(prana|shanti|nirvana|samyama|turiya|avahana|brahma|vayu|vajra|dhyana|samadhi|ananda|shiva|tejas|veda)\b/i;
+        const beforeSanskritFilter = finalNames.length;
+        finalNames = finalNames.filter(name => {
+          const hasSanskrit = sanskritPattern.test(name.name.toLowerCase());
+          // Only keep if explicitly liked by user
+          if (hasSanskrit) {
+            return likedNames.some(liked => 
+              liked.name.toLowerCase() === name.name.toLowerCase()
+            );
+          }
+          return true;
+        });
+        if (beforeSanskritFilter > finalNames.length) {
+          console.log(`Filtered ${beforeSanskritFilter - finalNames.length} Sanskrit/Yoga terms after Gen ${currentTab.generationCount}`);
+        }
+      }
+
+      // Increment generation count
+      const newGenerationCount = (currentTab.generationCount || 0) + 1;
+      updateCurrentTab({ 
+        generatedNames: finalNames, 
+        isGenerating: false,
+        generationCount: newGenerationCount 
+      });
+
+      // Generate learning summary every 3 generations
+      if (newGenerationCount % 3 === 0 && newGenerationCount > 0) {
+        try {
+          const summary = await generateLearningSummary(
+            currentTab.generatedNames,
+            getFavoritesForCurrentProject(),
+            settings.apiKey,
+            settings.provider,
+            settings.geminiModel
+          );
+          updateCurrentTab({ learningSummary: summary });
+        } catch (error) {
+          console.error("Learning summary generation failed:", error);
+          // Don't block user if summary fails
+        }
+      }
     } catch (error: any) {
       console.error("Generation failed:", error);
       const errorMessage = error?.message || t("errors.generationFailed");
@@ -869,6 +1155,70 @@ ${allWordCounts.map(wc => {
             </div>
           </div>
 
+          {/* AI Learning Summary - show after 3+ generations if available */}
+          {currentTab.learningSummary && (currentTab.generationCount || 0) >= 3 && (
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-xl">📊</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                    {t("generation.learningSummaryTitle")}
+                  </h4>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+                    {t("generation.learningSummaryDesc", { count: currentTab.generationCount })}
+                  </p>
+                  <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap border border-blue-100 dark:border-blue-900">
+                    {currentTab.learningSummary}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Semantic Field Exhaustion Warning - after 5+ generations */}
+          {(currentTab.generationCount || 0) >= 5 && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                  <span className="text-xl">💡</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    {t("generation.exhaustionTitle", { defaultValue: "Expand your creative territory?" })}
+                  </h4>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
+                    {t("generation.exhaustionDescription", { 
+                      defaultValue: `After ${currentTab.generationCount || 0} generations, the AI might be running out of fresh ideas in current semantic territories. Consider:`,
+                      count: currentTab.generationCount || 0
+                    })}
+                  </p>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 mb-3">
+                    <li>• {t("generation.exhaustionTip1", { defaultValue: "Adding new keywords in Configure step" })}</li>
+                    <li>• {t("generation.exhaustionTip2", { defaultValue: "Revisiting Workshop with fresh associations" })}</li>
+                    <li>• {t("generation.exhaustionTip3", { defaultValue: "Trying a different abstraction level" })}</li>
+                    <li>• {t("generation.exhaustionTip4", { defaultValue: "Changing the creativity level to 'High'" })}</li>
+                  </ul>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateCurrentTab({ step: 1 })}
+                      className="px-3 py-1.5 text-xs bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                    >
+                      {t("actions.backToConfigure", { defaultValue: "← Back to Configure" })}
+                    </button>
+                    <button
+                      onClick={() => updateCurrentTab({ step: 2 })}
+                      className="px-3 py-1.5 text-xs bg-amber-100 dark:bg-amber-800 text-amber-800 dark:text-amber-100 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-700 transition-colors"
+                    >
+                      {t("actions.backToWorkshop", { defaultValue: "← Back to Workshop" })}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {generatedNames.map((item, index) => (
               <div
@@ -891,9 +1241,31 @@ ${allWordCounts.map(wc => {
                   )}
                 </div>
                 {item.rationale && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
-                    {item.rationale}
-                  </p>
+                  <div className="mb-3">
+                    <p 
+                      className={`text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 transition-colors ${
+                        expandedRationale === index ? '' : 'line-clamp-2'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedRationale(expandedRationale === index ? null : index);
+                      }}
+                      title={expandedRationale === index ? t('actions.collapse', { defaultValue: 'Click to collapse' }) : t('actions.expand', { defaultValue: 'Click to read full description' })}
+                    >
+                      {item.rationale}
+                    </p>
+                    {item.rationale.length > 100 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedRationale(expandedRationale === index ? null : index);
+                        }}
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline mt-1"
+                      >
+                        {expandedRationale === index ? '↑ Collapse' : '↓ Read more'}
+                      </button>
+                    )}
+                  </div>
                 )}
                 <div className="flex items-center justify-between">
                   <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${typeColors[item.type]}`}>

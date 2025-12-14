@@ -162,6 +162,39 @@ export default function Settings({ onClose }: SettingsProps) {
               ))}
             </div>
           </div>
+
+          {/* Creativity Temperature */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t("settings.creativityTemperature", { defaultValue: "AI Creativity Level" })}
+            </label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              {t("settings.temperatureDesc", { defaultValue: "Higher values make output more random and creative" })}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {([
+                { value: 0.3, label: "Low", emoji: "🎯", desc: "Focused" },
+                { value: 0.5, label: "Balanced", emoji: "⚖️", desc: "Stable" },
+                { value: 0.8, label: "High", emoji: "🎨", desc: "Creative" },
+                { value: 1.0, label: "Max", emoji: "🚀", desc: "Wild" }
+              ] as const).map(({ value, label, emoji, desc }) => (
+                <button
+                  key={value}
+                  onClick={() => updateSettings({ creativityTemperature: value })}
+                  className={`px-3 py-2.5 rounded-lg font-medium transition-colors text-center ${
+                    settings.creativityTemperature === value
+                      ? "bg-purple-600 text-white ring-2 ring-purple-400"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                  title={desc}
+                >
+                  <div className="text-lg">{emoji}</div>
+                  <div className="text-xs mt-1">{label}</div>
+                  <div className="text-xs opacity-70">{value}</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

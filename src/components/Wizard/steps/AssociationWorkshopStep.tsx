@@ -34,12 +34,23 @@ export default function AssociationWorkshopStep() {
     });
   };
 
-  // Step 1: Properties
+  // Step 1: Properties - support comma-separated input
   const addProperty = () => {
-    if (newProperty.trim() && workshop.properties.length < 6) {
-      updateWorkshop({
-        properties: [...workshop.properties, newProperty.trim()],
-      });
+    if (newProperty.trim()) {
+      // Split by comma and add all properties
+      const newProperties = newProperty
+        .split(",")
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      
+      const remainingSlots = 6 - workshop.properties.length;
+      const propertiesToAdd = newProperties.slice(0, remainingSlots);
+      
+      if (propertiesToAdd.length > 0) {
+        updateWorkshop({
+          properties: [...workshop.properties, ...propertiesToAdd],
+        });
+      }
       setNewProperty("");
     }
   };
@@ -225,8 +236,11 @@ export default function AssociationWorkshopStep() {
             </button>
           </div>
 
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {workshop.properties.length}/6 {t("associationWorkshop.properties")} • {t("associationWorkshop.minRequired", { count: 3 })}
+          {/* Comma hint */}
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <p>💡 {t("associationWorkshop.step1.commaHint", { defaultValue: "Tip: You can enter multiple properties separated by commas" })}</p>
+            <p>📝 {t("associationWorkshop.step1.formatHint", { defaultValue: "Properties can be single words (\"authentic\") or phrases (\"ancient knowledge to solve modern problems\")" })}</p>
+            <p className="mt-2">{workshop.properties.length}/6 {t("associationWorkshop.properties")} • {t("associationWorkshop.minRequired", { count: 3 })}</p>
           </div>
 
           {workshop.properties.length > 0 && (
@@ -293,6 +307,14 @@ export default function AssociationWorkshopStep() {
                   <p className="ml-4 text-xs italic mt-1">{t("associationWorkshop.step2.contrastExample")}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Guidance tip */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>🎯 Recommended workflow:</strong> For each property, try to add at least 1 association of each type (similarity, adjacency, contrast). 
+                <span className="block mt-1 text-xs">The more diverse your associations, the richer the naming generation. Contrasts are especially useful for names like "Not From Paris" - they define what you're NOT.</span>
+              </p>
             </div>
           </div>
 

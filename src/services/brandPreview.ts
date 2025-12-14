@@ -165,6 +165,23 @@ const generateTextLogoPreview = (
   const colors = getStyleColors(style);
   const fontFamily = getStyleFont(style);
   
+  // Extract initials or use first 2-3 letters intelligently
+  const getLogoText = (name: string): string => {
+    // If 1 word: use first 2-3 letters (Nike → NI, Tesla → TES)
+    // If 2+ words: use initials (Fast Track → FT)
+    const words = name.trim().split(/\s+/);
+    if (words.length > 1) {
+      return words.map(w => w.charAt(0).toUpperCase()).join('').slice(0, 3);
+    }
+    // Single word: use first 2-3 chars based on length
+    if (name.length <= 4) return name.toUpperCase();
+    if (name.length <= 6) return name.slice(0, 2).toUpperCase();
+    return name.slice(0, 3).toUpperCase();
+  };
+  
+  const logoText = getLogoText(brandName);
+  const fontSize = logoText.length === 1 ? 48 : logoText.length === 2 ? 40 : 32;
+  
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
       <defs>
@@ -175,14 +192,14 @@ const generateTextLogoPreview = (
       </defs>
       <rect width="400" height="400" fill="white"/>
       <circle cx="200" cy="150" r="80" fill="url(#grad)"/>
-      <text x="200" y="165" font-family="${fontFamily}" font-size="48" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="middle">
-        ${brandName.charAt(0).toUpperCase()}
+      <text x="200" y="165" font-family="${fontFamily}" font-size="${fontSize}" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="middle">
+        ${logoText}
       </text>
       <text x="200" y="280" font-family="${fontFamily}" font-size="36" font-weight="600" fill="${colors.primary}" text-anchor="middle">
         ${brandName}
       </text>
       <text x="200" y="320" font-family="Arial, sans-serif" font-size="12" fill="#666" text-anchor="middle">
-        AI-generated preview
+        Temporary preview • Use AI generation for real logo
       </text>
     </svg>
   `.trim();
