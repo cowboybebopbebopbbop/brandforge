@@ -326,13 +326,15 @@ Generate exactly ${settings.resultsPerGeneration} brand names. For each name:
 - **type**: invented, compound, acronym, descriptive, or foreign
 - **category**: informing, image_informing, image, or abstract_constructed  
 - **rationale**: 20-50 word explanation of meaning, positioning, and feeling it creates
+${currentTab.strategy && currentTab.strategy.territories.length > 0 ? `- **territoryId**: One of ${currentTab.strategy.territories.map(t => `"${t.id}"`).join(', ')} (choose the territory that best matches each name)` : ''}
 
 Example of a GOOD name object:
-{"name": "Verdana", "type": "invented", "category": "image", "rationale": "Derived from 'verdant' meaning green and flourishing. Evokes growth, vitality, and natural wellness. The soft 'a' ending creates an approachable, feminine feel ideal for wellness brands."}
+{"name": "Verdana", "type": "invented", "category": "image"${currentTab.strategy && currentTab.strategy.territories.length > 0 ? `, "territoryId": "${currentTab.strategy.territories[0].id}"` : ''}, "rationale": "Derived from 'verdant' meaning green and flourishing. Evokes growth, vitality, and natural wellness. The soft 'a' ending creates an approachable, feminine feel ideal for wellness brands."}
 
 Example of BAD output (DO NOT DO THIS):
 {"name": "Direct/Functional", ...} ← This is a category label, NOT a brand name
 {"name": "Emotional/Aspirational", ...} ← This is a category label, NOT a brand name
+{"rationale": "Comb"} ← This is a fragment, NOT a complete explanation
 
 ${(currentTab.generationCount || 0) >= 5 ? `Note: Generation ${currentTab.generationCount} - maintain quality rationales.` : ''}
 
@@ -353,7 +355,8 @@ ${allWordCounts.length > 0 ? `Word count: ${allWordCounts.map(wc => wc === 'shor
 Quality standards:
 - Each name must be unique and memorable
 - Use diverse roots - avoid repeating same root more than twice
-- Names should feel like real, professional brands`;
+- Names should feel like real, professional brands
+- Every rationale must be complete (20-50 words minimum) - no fragments like "Comb" or single words`;
 
     return prompt;
   };

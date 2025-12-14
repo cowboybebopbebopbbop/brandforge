@@ -1,9 +1,19 @@
 /**
  * API utilities for BrandForge
  * Browser-based API calls to AI providers
+ * 
+ * P0 Fix: Unified schema enforcement with versioned response contracts
  */
 
 import { GeneratedName } from "./store";
+import { 
+  NAME_GENERATION_SCHEMA, 
+  NameGenerationResponse, 
+  NameCandidate,
+  validateRationale,
+  checkRootDiversity,
+  SCHEMA_VERSION
+} from "./schemas";
 
 // Generate learning summary from generation history
 export async function generateLearningSummary(
@@ -96,11 +106,16 @@ export interface TrademarkCheckRequest {
   mktu_classes: number[];
 }
 
-// Helper to parse AI response and extract names
+/**
+ * P0 Fix: Parse AI response with unified schema validation
+ * P1 Fix: Remove fallback rationale templates - reject invalid responses
+ * 
+ * Returns GeneratedName[] matching our contract
+ */
 const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   const names: GeneratedName[] = [];
   
-  // Try to parse as JSON first (primary method)
+  // Try to parse as JSON first (primary method with Gemini 2.0 responseSchema)
   try {
     // Handle markdown code blocks around JSON
     let jsonText = text.trim();
@@ -112,17 +127,56 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     
     const parsed = JSON.parse(jsonText);
     
-    // Handle both array and object with names array
-    const namesArray = Array.isArray(parsed) ? parsed : (parsed.names || []);
+    // P0 Fix: Handle versioned response schema
+    let candidates: NameCandidate[] = [];
     
-    if (namesArray.length > 0) {
-      return namesArray.slice(0, count).map((item: any) => ({
-        name: item.name || item.title || '',
-        type: item.type || 'invented',
-        rationale: item.rationale || item.description || item.explanation || '',
-        selected: false,
-        category: item.category
-      })).filter((item: any) => item.name && item.name.length > 0);
+    if (Array.isArray(parsed)) {
+      // Legacy format: flat array
+      candidates = parsed;
+    } else if (parsed.candidates && Array.isArray(parsed.candidates)) {
+      // New format: NameGenerationResponse with candidates array
+      candidates = parsed.candidates;
+    } else if (parsed.names && Array.isArray(parsed.names)) {
+      // Alternative format
+      candidates = parsed.names;
+    }
+    
+    if (candidates.length > 0) {
+      // P0 Fix: Validate and convert to GeneratedName with unified field names
+      const validatedNames = candidates.slice(0, count).map((item: any) => {
+        const candidate: GeneratedName = {
+          name: item.name || item.title || '',
+          type: item.type || 'invented',
+          rationale: item.rationale || item.description || item.explanation || '',
+          selected: false,
+          category: item.category || item.category4 || item.category_4, // P0 Fix: handle all variants
+          territoryId: item.territoryId || item.territory_id
+        };
+        
+        // P1 Fix: Validate rationale quality - reject empty/template rationales
+        const validation = validateRationale(candidate.rationale || '');
+        if (!validation.valid) {
+          console.warn(`Invalid rationale for "${candidate.name}": ${validation.error}`);
+          // DO NOT use fallback templates - mark as invalid
+          candidate.rationale = ''; // Will be filtered out
+        }
+        
+        return candidate;
+      }).filter((item: GeneratedName) => {
+        // P1 Fix: Strict filtering - reject names with empty rationales
+        return item.name && 
+               item.name.length > 0 && 
+               item.rationale && 
+               item.rationale.length > 0;
+      });
+      
+      // P0 Fix: Check root diversity
+      const diversityIssues = checkRootDiversity(validatedNames);
+      if (diversityIssues.size > 0) {
+        console.warn('Root diversity issues detected:', Object.fromEntries(diversityIssues));
+      }
+      
+      return validatedNames;
     }
   } catch (e) {
     // JSON parsing failed, try to extract JSON from text
@@ -131,13 +185,20 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed)) {
-          return parsed.slice(0, count).map(item => ({
+          const validatedNames = parsed.slice(0, count).map(item => ({
             name: item.name || item.title || '',
             type: item.type || 'invented',
             rationale: item.rationale || item.description || item.explanation || '',
             selected: false,
-            category: item.category
-          })).filter(item => item.name && item.name.length > 0);
+            category: item.category || item.category4 || item.category_4,
+            territoryId: item.territoryId || item.territory_id
+          })).filter(item => {
+            // P1 Fix: Strict validation
+            const validation = validateRationale(item.rationale || '');
+            return item.name && item.name.length > 0 && validation.valid;
+          });
+          
+          return validatedNames;
         }
       } catch {
         // Continue to text parsing
@@ -145,9 +206,11 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     }
   }
   
+  console.warn('P1: JSON parsing failed, falling back to text parsing (lower quality)');
   console.log('Parsing AI response (fallback to text parsing):', text.substring(0, 500));
   
-  // Parse text response line by line (FALLBACK - JSON is preferred)
+  // P1 Fix: Text parsing fallback (LAST RESORT - should rarely be needed with responseSchema)
+  // DO NOT use template rationales - reject incomplete responses
   const lines = text.split('\n');
   let currentName = '';
   let currentType: GeneratedName['type'] = 'invented';
@@ -170,29 +233,21 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     if (nameFieldMatch) {
       // Save previous name if exists and valid
       if (currentName && hasValidName && currentName.length > 1) {
-        // Ensure rationale is meaningful and substantial
-        const cleanRationale = currentRationale.trim();
-        let meaningfulRationale = cleanRationale;
+        const validation = validateRationale(currentRationale.trim());
         
-        // Check if rationale is empty, too short, or just a type name/fragment
-        if (!cleanRationale || 
-            cleanRationale.length < 15 || 
-            cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign|creative brand name|suggestion|comb|means|combines|refers|represents)$/i)) {
-          meaningfulRationale = `${currentName}: A ${currentType} brand name thoughtfully crafted to communicate brand essence and resonate with target audience.`;
+        // P1 Fix: Only add if rationale is valid (no template fallbacks)
+        if (validation.valid) {
+          names.push({
+            name: currentName,
+            type: currentType,
+            rationale: currentRationale.trim(),
+            selected: false,
+            category: currentCategory || undefined
+          });
+        } else {
+          console.warn(`Skipping "${currentName}": ${validation.error}`);
         }
         
-        // Replace single-word fragments with full sentences
-        if (cleanRationale.match(/^\w{3,8}$/)) {
-          meaningfulRationale = `${currentName} is a ${currentType} brand name designed for memorable brand identity and market differentiation.`;
-        }
-        
-        names.push({
-          name: currentName,
-          type: currentType,
-          rationale: meaningfulRationale,
-          selected: false,
-          category: currentCategory || undefined
-        });
         currentRationale = '';
         currentType = 'invented';
         currentCategory = '';
@@ -239,20 +294,18 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
         simpleMatch[1].trim().split(/\s+/).length <= 4) { // Only accept if "name" part is 4 words or less
       // Save previous name if exists and valid
       if (currentName && hasValidName && currentName.length > 1) {
-        const cleanRationale = currentRationale.trim();
-        const meaningfulRationale = cleanRationale && 
-          cleanRationale.length > 10 && 
-          !cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign)$/i)
-          ? cleanRationale
-          : 'Creative brand name suggestion';
+        const validation = validateRationale(currentRationale.trim());
         
-        names.push({
-          name: currentName,
-          type: currentType,
-          rationale: meaningfulRationale,
-          selected: false,
-          category: currentCategory || undefined
-        });
+        if (validation.valid) {
+          names.push({
+            name: currentName,
+            type: currentType,
+            rationale: currentRationale.trim(),
+            selected: false,
+            category: currentCategory || undefined
+          });
+        }
+        
         currentRationale = '';
         currentType = 'invented';
         currentCategory = '';
@@ -281,43 +334,29 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   
   // Add last name if valid
   if (currentName && hasValidName && currentName.length > 1) {
-    const cleanRationale = currentRationale.trim();
-    let meaningfulRationale = cleanRationale;
+    const validation = validateRationale(currentRationale.trim());
     
-    // Stronger validation for rationale quality
-    if (!cleanRationale || 
-        cleanRationale.length < 15 || 
-        cleanRationale.toLowerCase().match(/^(invented|compound|acronym|descriptive|foreign|creative|suggestion)$/i)) {
-      meaningfulRationale = `${currentName}: A ${currentType} brand name combining creative elements for strategic positioning.`;
+    if (validation.valid) {
+      names.push({
+        name: currentName,
+        type: currentType,
+        rationale: currentRationale.trim(),
+        selected: false,
+        category: currentCategory || undefined
+      });
+    } else {
+      console.warn(`Skipping final name "${currentName}": ${validation.error}`);
     }
-    
-    names.push({
-      name: currentName,
-      type: currentType,
-      rationale: meaningfulRationale,
-      selected: false,
-      category: currentCategory || undefined
-    });
   }
   
-  // Final validation: ensure ALL names have substantial rationales
-  const preValidated = names.filter(n => 
+  // P1 Fix: No template fallbacks - return what we have (even if < count)
+  const validNames = names.filter(n => 
     n.name && 
     n.name.length > 1 && 
-    n.name.length < 50
+    n.name.length < 50 &&
+    n.rationale &&
+    n.rationale.length > 0
   );
-  
-  const validNames = preValidated.map(name => {
-    // Check rationale quality
-    if (!name.rationale || 
-        name.rationale.length < 15 || 
-        name.rationale.toLowerCase().match(/^(creative brand name suggestion|creative brand name|suggestion)$/i)) {
-      return {
-        ...name,
-        rationale: `${name.name}: A ${name.type} brand name combining creative elements for memorable impact and strategic positioning.`
-      };
-    }
-    return name;
   });
   
   return validNames.slice(0, count);
@@ -347,20 +386,9 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 2048,
+            // P0 Fix: Use versioned response schema
             responseMimeType: "application/json",
-            responseSchema: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  type: { type: "string", enum: ["invented", "compound", "acronym", "descriptive", "foreign"] },
-                  category: { type: "string", enum: ["informing", "image_informing", "image", "abstract_constructed"] },
-                  rationale: { type: "string" }
-                },
-                required: ["name", "type", "rationale"]
-              }
-            }
+            responseSchema: NAME_GENERATION_SCHEMA
           }
         })
       }

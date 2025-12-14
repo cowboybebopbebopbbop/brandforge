@@ -16,27 +16,42 @@ export interface NameChecks {
   intercultural_risk: "low" | "medium" | "high";
 }
 
+/**
+ * P0 Fix: Unified GeneratedName interface
+ * - Field name: 'category' (not category4 or category_4)
+ * - All required fields clearly marked
+ * - Complete type enum with 'user'
+ */
 export interface GeneratedName {
+  // REQUIRED FIELDS (from API)
   id?: string; // Unique identifier for tracking
   name: string;
   type: "invented" | "compound" | "acronym" | "descriptive" | "foreign" | "user";
-  rationale?: string;
+  rationale?: string; // Should always exist for API-generated names
+  
+  // PRD S2: 4-category classification (P0 Fix: unified field name)
+  category?: NameCategory4; // ✓ Always 'category', never 'category4' or 'category_4'
+  
+  // PRD S2: Territory reference
+  territoryId?: string;
+  
+  // PRD S2: Quality checks
+  checks?: NameChecks;
+  
+  // UI STATE (local only)
   selected?: boolean;
-  riskLevel?: "safe" | "caution" | "risk";
-  exactMatches?: string[];
-  similarMatches?: string[];
-  details?: string;
   liked?: boolean;
   disliked?: boolean;
   favorited?: boolean;
   tabId?: string; // For tracking which tab it came from
   timestamp?: number; // When it was created/favorited
-  // PRD S2: 4-category classification
-  category4?: NameCategory4;
-  // PRD S2: Territory reference
-  territoryId?: string;
-  // PRD S2: Quality checks
-  checks?: NameChecks;
+  
+  // AVAILABILITY CHECK RESULTS (from availability checker)
+  riskLevel?: "safe" | "caution" | "risk";
+  exactMatches?: string[];
+  similarMatches?: string[];
+  details?: string;
+  
   // Client Feedback Layer
   clientFeedback?: {
     status: "approved" | "needs-work" | "rejected" | "pending";
