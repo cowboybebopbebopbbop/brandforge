@@ -357,7 +357,6 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     n.rationale &&
     n.rationale.length > 0
   );
-  });
   
   return validNames.slice(0, count);
 };
