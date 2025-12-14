@@ -6,8 +6,9 @@ import type { GeneratedName } from "../../../store";
 
 export default function GenerateStep() {
   const { t } = useTranslation();
-  const { getCurrentTab, updateCurrentTab, settings, toggleFavorite, favoritedNames, tabs } = useAppStore();
+  const { getCurrentTab, updateCurrentTab, settings, toggleFavorite, getFavoritesForCurrentProject } = useAppStore();
   const currentTab = getCurrentTab();
+  const favoritedNames = getFavoritesForCurrentProject();
   const [showPrompt, setShowPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [isPromptEdited, setIsPromptEdited] = useState(false);
@@ -25,6 +26,12 @@ export default function GenerateStep() {
     const allGeneratedNames = currentTab.generatedNames;
     const likedNames = allGeneratedNames.filter(n => n.liked);
     const dislikedNames = allGeneratedNames.filter(n => n.disliked);
+    
+    // Collect CLIENT feedback from favorites FOR CURRENT PROJECT ONLY
+    const favoritesFromCurrentTab = getFavoritesForCurrentProject();
+    const clientApproved = favoritesFromCurrentTab.filter(f => f.clientFeedback?.status === 'approved');
+    const clientNeedsWork = favoritesFromCurrentTab.filter(f => f.clientFeedback?.status === 'needs-work');
+    const clientRejected = favoritesFromCurrentTab.filter(f => f.clientFeedback?.status === 'rejected');
     
     // Combine selected tones with custom tone
     const allTones = [...(config.tones || [])];
@@ -125,6 +132,79 @@ Generate ${settings.resultsPerGeneration} unique brand names for a ${config.indu
       prompt += `\n\n**Additional Instructions:** ${config.customInstructions}`;
     }
 
+    // PRD S2: North Star (P1 - main positioning anchor)
+    if (config.northStar?.trim()) {
+      prompt += `\n\n---\n\n# 🎯 NORTH STAR (PRIMARY POSITIONING ANCHOR)\n\n"${config.northStar}"\n\n**This is the core positioning statement. ALL generated names MUST express this essence.**`;
+    }
+
+    // PRD S2: Opposition slider (P2 - market differentiation)
+    const oppositionLevel = config.oppositionSlider || 50;
+    prompt += `\n\n**Market Opposition Level:** ${oppositionLevel}% (${
+      oppositionLevel < 30 ? "Similar to 80% of competitors - safe, conventional" :
+      oppositionLevel < 70 ? "Balanced - distinctive but not alienating" :
+      "Highly differentiated - bold, oppositional to market norms"
+    })`;
+
+    // PRD S2: 4 Name Categories (P3)
+    if (config.nameCategories && config.nameCategories.length > 0) {
+      const categoryDescriptions: Record<string, string> = {
+        informing: "Informative & Non-emotional (describes what the company does directly)",
+        image_informing: "Informative & Emotional (describes function with emotional resonance)",
+        image: "Non-informative & Emotional (evokes feelings, uses metaphors)",
+        abstract_constructed: "Abstract/Constructed (invented words, neologisms, no direct meaning)"
+      };
+      prompt += `\n\n**Required Name Categories (distribute names across these):**\n${
+        config.nameCategories.map(cat => `- ${categoryDescriptions[cat]}`).join("\n")
+      }`;
+    }
+
+    // PRD S2: Company Strategy
+    if (config.companyStrategy) {
+      const strategyDescriptions: Record<string, string> = {
+        discounter: "Discounter - emphasize value, accessibility, mass-market appeal",
+        professional: "Professional - emphasize expertise, reliability, trust",
+        innovator: "Innovator - emphasize cutting-edge, disruption, novelty",
+        star: "Star/Premium - emphasize luxury, exclusivity, aspiration"
+      };
+      prompt += `\n\n**Company Strategy:** ${strategyDescriptions[config.companyStrategy]}`;
+    }
+
+    // PRD S2: Audience values (wants/fears)
+    if ((config.audienceWants && config.audienceWants.length > 0) || 
+        (config.audienceFears && config.audienceFears.length > 0)) {
+      prompt += `\n\n**Audience Values:**`;
+      if (config.audienceWants && config.audienceWants.length > 0) {
+        prompt += `\n- They WANT: ${config.audienceWants.join(", ")}`;
+      }
+      if (config.audienceFears && config.audienceFears.length > 0) {
+        prompt += `\n- They FEAR: ${config.audienceFears.join(", ")}`;
+      }
+    }
+
+    // PRD S2: Communication Channels & Phone-first
+    if (config.communicationChannels && config.communicationChannels.length > 0) {
+      prompt += `\n\n**Priority Communication Channels:** ${config.communicationChannels.join(", ")}`;
+      if (config.isPhoneFirst || config.communicationChannels.includes("phone-first")) {
+        prompt += `\n⚠️ **PHONE-FIRST REQUIREMENT:** Names must "write as they sound" - phonetically intuitive spelling for verbal communication.`;
+      }
+    }
+
+    // PRD S2: Abstraction Level (P8)
+    if (config.abstractionLevel) {
+      const abstractionDescriptions: Record<string, string> = {
+        product: "Product level - focus on what the product/service literally is",
+        capabilities: "Capabilities level - focus on what the product enables",
+        beliefs: "Beliefs level - focus on values and principles",
+        mission: "Mission level - focus on higher purpose and vision"
+      };
+      prompt += `\n\n**Abstraction Level:** ${abstractionDescriptions[config.abstractionLevel]}`;
+    }
+
+    // PRD S2: Corporate naming requirements (P6)
+    if (config.isCorporate) {
+      prompt += `\n\n**⚠️ CORPORATE NAMING REQUIREMENTS:**\n- Names should be SHORT (preferably 1-2 syllables)\n- Names should be NEUTRAL (not industry-specific, can grow with company)\n- Names should be INTERNATIONAL (work across cultures and languages)\n- Avoid names that limit future expansion`;
+    }
+
     // Add target audience and positioning if available
     if (config.targetAudience?.trim()) {
       prompt += `\n\n**Target Audience:** ${config.targetAudience}`;
@@ -150,14 +230,108 @@ Generate ${settings.resultsPerGeneration} unique brand names for a ${config.indu
       prompt += `\n\n**Geographic Market:** ${config.geographicMarket}`;
     }
 
+    // PRD S2 FR4: Association Workshop - include seed ideas
+    if (currentTab.associationWorkshop) {
+      const workshop = currentTab.associationWorkshop;
+      
+      if (workshop.properties.length > 0) {
+        prompt += `\n\n---\n\n# ASSOCIATION WORKSHOP DATA\n\n**Key Properties of the Offering:**\n${workshop.properties.map(p => `- ${p}`).join("\n")}`;
+      }
+      
+      if (workshop.associations.length > 0) {
+        prompt += `\n\n**Associations by Type:**`;
+        const byType = {
+          similarity: workshop.associations.filter(a => a.type === "similarity"),
+          adjacency: workshop.associations.filter(a => a.type === "adjacency"),
+          contrast: workshop.associations.filter(a => a.type === "contrast"),
+        };
+        
+        if (byType.similarity.length > 0) {
+          prompt += `\n\n*Similarity (what it's like):*\n${byType.similarity.map(a => `- ${a.property}: ${a.words.join(", ")}`).join("\n")}`;
+        }
+        if (byType.adjacency.length > 0) {
+          prompt += `\n\n*Adjacency (what it's near/related to):*\n${byType.adjacency.map(a => `- ${a.property}: ${a.words.join(", ")}`).join("\n")}`;
+        }
+        if (byType.contrast.length > 0) {
+          prompt += `\n\n*Contrast (what it's opposite to):*\n${byType.contrast.map(a => `- ${a.property}: ${a.words.join(", ")}`).join("\n")}`;
+        }
+      }
+      
+      if (workshop.crossedAssociations.length > 0) {
+        prompt += `\n\n**💡 SEED IDEAS (use these as inspiration for name generation):**\n${workshop.crossedAssociations.map(c => `- ${c.seedIdea}`).join("\n")}`;
+        prompt += `\n\n**Use these seed ideas to generate creative names that capture the crossed associations.**`;
+      }
+    }
+
     // Add user feedback section if there are liked or disliked names AND feedback is enabled
-    if (includeFeedback && (likedNames.length > 0 || dislikedNames.length > 0)) {
+    if (includeFeedback && (likedNames.length > 0 || dislikedNames.length > 0 || clientApproved.length > 0 || clientNeedsWork.length > 0 || clientRejected.length > 0)) {
       prompt += `\n\n---
 
 # USER FEEDBACK & CRITICAL REQUIREMENTS
 
 Based on previous generations, the user has provided feedback. This is CRITICAL - you MUST follow these rules:
 `;
+
+      // CLIENT FEEDBACK SECTION (highest priority)
+      if (clientApproved.length > 0 || clientNeedsWork.length > 0 || clientRejected.length > 0) {
+        prompt += `\n## 🎯 CLIENT FEEDBACK (HIGHEST PRIORITY)
+
+This is feedback from the actual client/stakeholder. This takes PRECEDENCE over internal designer preferences.
+`;
+
+        if (clientApproved.length > 0) {
+          prompt += `\n**✅ CLIENT APPROVED Names** (client loves these - understand the winning formula):\n`;
+          clientApproved.forEach(name => {
+            const feedback = name.clientFeedback;
+            prompt += `• ${name.name} (${name.type})`;
+            if (feedback?.clientName) prompt += ` - approved by ${feedback.clientName}`;
+            if (feedback?.comments) prompt += `\n  Client says: "${feedback.comments}"`;
+            prompt += `\n  Rationale: ${name.rationale || 'Professional recommendation'}\n`;
+          });
+          prompt += `\n**Strategy for approved names:**
+- These names represent the WINNING direction from client perspective
+- Analyze what made these succeed: tone, structure, meaning, cultural fit
+- Generate new names that capture the SAME essence but are different words
+- This is your North Star for this project
+\n`;
+        }
+
+        if (clientNeedsWork.length > 0) {
+          prompt += `\n**🔄 CLIENT REQUESTED REFINEMENT:**\n`;
+          clientNeedsWork.forEach(name => {
+            const feedback = name.clientFeedback;
+            prompt += `• ${name.name} - interesting direction, but needs adjustment`;
+            if (feedback?.clientName) prompt += ` (${feedback.clientName})`;
+            if (feedback?.comments) prompt += `\n  Client feedback: "${feedback.comments}"`;
+            prompt += `\n`;
+          });
+          prompt += `\n**How to refine:**
+- Take the core concept but adjust the execution
+- Address specific client concerns mentioned in comments
+- Explore variations that fix the issues while keeping the good parts
+\n`;
+        }
+
+        if (clientRejected.length > 0) {
+          prompt += `\n**❌ CLIENT REJECTED Names** (client didn't connect with these):\n`;
+          clientRejected.forEach(name => {
+            const feedback = name.clientFeedback;
+            prompt += `• ${name.name}`;
+            if (feedback?.comments) prompt += ` - "${feedback.comments}"`;
+            prompt += `\n`;
+          });
+          prompt += `\n**Critical rules for rejected names:**
+- Avoid the style, tone, or approach of these names
+- Client feedback indicates these directions don't resonate
+- Move away from these semantic territories completely
+\n`;
+        }
+      }
+
+      // DESIGNER'S INTERNAL FEEDBACK
+      if (likedNames.length > 0 || dislikedNames.length > 0) {
+        prompt += `\n## 💭 DESIGNER'S INTERNAL FEEDBACK\n`;
+      }
 
       if (dislikedNames.length > 0) {
         // Extract words and roots from disliked names
@@ -223,9 +397,17 @@ For each name, provide the following in a structured format:
 
 1. **Name:** The brand name
 2. **Type:** One of: invented, compound, acronym, descriptive, or foreign
-3. **Rationale:** A short, strategic explanation that clarifies the intended brand feeling, positioning, and meaning
+3. **Category:** One of: informing, image_informing, image, abstract_constructed
+4. **Rationale:** A short, strategic explanation that clarifies the intended brand feeling, positioning, and meaning
+5. **Checks:** (only if concerning)
+   - negative_reading_risk: low/medium/high (negative readings or double meanings)
+   - phone_spelling_risk: low/medium/high (how easy to spell when heard)
+   - ru_phonetic_risk: low/medium/high (difficult consonant clusters in Russian)
+   - intercultural_risk: low/medium/high (problematic meanings in other cultures/languages)
 
 Present all ${settings.resultsPerGeneration} names in a numbered list.
+
+**Flag names with medium or high risk** - don't hide them, but mark them clearly so the user can make informed decisions.
 
 ---
 
@@ -241,6 +423,7 @@ ${config.language === 'russian' ? `
 - Examples of good Russian invented names: Сбер, Билайн, МегаФон, Ситилинк, Пятёрочка
 - AVOID simple English transliterations (like "Поинт" for "Point")
 - Think like Russian brand naming: short, memorable, culturally resonant
+- **PHONETIC CHECK (P9):** Flag names with difficult consonant clusters (like "ВСТР", "НКСТВ") as ru_phonetic_risk: high
 ` : config.language === 'both' ? `
 **MULTILINGUAL GENERATION:**
 - Create names that work in BOTH English and Russian
@@ -422,11 +605,11 @@ ${allWordCounts.map(wc => {
       return;
     }
     setError(null);
-    updateCurrentTab({ step: 3 });
+    updateCurrentTab({ step: 4 });
   };
 
   const handleBack = () => {
-    updateCurrentTab({ step: 1 });
+    updateCurrentTab({ step: 2 });
   };
 
   const typeColors: Record<string, string> = {

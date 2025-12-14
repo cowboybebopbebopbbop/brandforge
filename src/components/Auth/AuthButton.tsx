@@ -1,10 +1,29 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const AuthButton = () => {
   const { user, signInWithGoogle, signOut, error } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   const handleSignIn = async () => {
     setIsLoading(true);
@@ -21,6 +40,7 @@ export const AuthButton = () => {
   const handleSignOut = async () => {
     setIsLoading(true);
     setLocalError(null);
+    setShowDropdown(false);
     try {
       await signOut();
     } catch (error: any) {
@@ -32,38 +52,52 @@ export const AuthButton = () => {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="flex items-center gap-2 focus:outline-none"
+        >
           {user.photoURL && (
             <img
               src={user.photoURL}
               alt={user.displayName || 'User'}
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8 rounded-full ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600 transition-all cursor-pointer"
             />
           )}
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            {user.displayName}
-          </span>
-        </div>
-        <button
-          onClick={handleSignOut}
-          disabled={isLoading}
-          className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? 'Signing out...' : 'Sign Out'}
         </button>
+
+        {/* Dropdown Menu */}
+        {showDropdown && (
+          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {user.displayName}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {user.email}
+              </p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              disabled={isLoading}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? 'Signing out...' : 'Sign Out'}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="relative group">
       <button
         onClick={handleSignIn}
         disabled={isLoading}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
       >
-        <svg className="w-5 h-5" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" viewBox="0 0 24 24">
           <path
             fill="currentColor"
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -81,10 +115,10 @@ export const AuthButton = () => {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        {isLoading ? 'Signing in...' : 'Sign in with Google'}
+        <span className="hidden sm:inline">{isLoading ? 'Signing in...' : 'Sign in'}</span>
       </button>
       {(localError || error) && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
           {localError || error}
         </p>
       )}

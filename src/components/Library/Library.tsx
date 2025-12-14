@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store";
 import { checkTrademarks } from "../../api";
 import type { GeneratedName } from "../../store";
+import ClientFeedback from "../ClientFeedback/ClientFeedback";
+import CreateCustomName from "../CreateCustomName/CreateCustomName";
 
 interface TrademarkResult {
   name: string;
@@ -14,13 +16,20 @@ interface TrademarkResult {
 
 export default function Library() {
   const { t } = useTranslation();
-  const { favoritedNames, removeFromFavorites, favoritedNames: favorites, settings, tabs } = useAppStore();
+  const { removeFromFavorites, tabs, updateFavoriteName, addCustomFavorite, activeTabId, getFavoritesForCurrentProject } = useAppStore();
   const [isChecking, setIsChecking] = useState(false);
   const [checkedNames, setCheckedNames] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [feedbackModalName, setFeedbackModalName] = useState<GeneratedName | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Get MKTU classes from active tabs or use empty array
-  const mktuClasses = tabs[0]?.config?.mktuClasses || [];
+  // Get favorites for current project only
+  const projectFavorites = getFavoritesForCurrentProject();
+  
+  // Get current tab
+  const currentTab = tabs.find(t => t.id === activeTabId);
+
+  // Get MKTU classes from active tab or use empty array
+  const mktuClasses = currentTab?.config?.mktuClasses || [];
 
   const handleRemove = (name: string) => {
     if (confirm(t("library.confirmRemove"))) {
@@ -34,13 +43,15 @@ export default function Library() {
     acronym: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
     descriptive: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
     foreign: "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300",
+    user: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
   };
 
   const exportFavorites = () => {
     const data = {
       exportDate: new Date().toISOString(),
-      totalFavorites: favoritedNames.length,
-      favorites: favoritedNames.map((n) => ({
+      projectName: currentTab?.name || "Unknown Project",
+      totalFavorites: projectFavorites.length,
+      favorites: projectFavorites.map((n) => ({
         name: n.name,
         type: n.type,
         rationale: n.rationale || "",
@@ -54,25 +65,28 @@ export default function Library() {
     
     const a = document.createElement("a");
     a.href = url;
-    a.download = `brandforge-favorites-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `brandforge-favorites-${currentTab?.name.replace(/\s+/g, '-')}-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const copyToClipboard = async () => {
-    const text = favoritedNames.map((n) => n.name).join("\n");
+    const text = projectFavorites.map((n) => n.name).join("\n");
     await navigator.clipboard.writeText(text);
   };
 
+  const handleCreateCustom = (name: string, rationale: string) => {
+    addCustomFavorite(name, rationale);
+  };
+
   const checkFavorites = async () => {
-    if (favoritedNames.length === 0) return;
+    if (projectFavorites.length === 0) return;
     
-    setError(null);
     setIsChecking(true);
 
     try {
       const results: TrademarkResult[] = await checkTrademarks({
-        names: favoritedNames.map((n) => n.name),
+        names: projectFavorites.map((n) => n.name),
         mktu_classes: mktuClasses,
       });
       
@@ -82,9 +96,8 @@ export default function Library() {
       setCheckedNames(newChecked);
       
       setIsChecking(false);
-    } catch (error) {
-      console.error("Check failed:", error);
-      setError(t("errors.checkFailed"));
+    } catch (err) {
+      console.error("Check failed:", err);
       setIsChecking(false);
     }
   };
@@ -101,12 +114,22 @@ export default function Library() {
             {t("library.title")}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {t("library.subtitle", { count: favoritedNames.length })}
+            {currentTab?.name} • {t("library.subtitle", { count: projectFavorites.length })}
           </p>
         </div>
-        {favoritedNames.length > 0 && (
-          <div className="flex gap-2">
-            <button
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {t("customName.createButton")}
+          </button>
+          {projectFavorites.length > 0 && (
+            <>
+              <button
               onClick={checkFavorites}
               disabled={isChecking}
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
@@ -146,12 +169,13 @@ export default function Library() {
               </svg>
               {t("actions.export")}
             </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Empty State */}
-      {favoritedNames.length === 0 && (
+      {projectFavorites.length === 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-16">
           <div className="text-center max-w-md mx-auto">
             <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 rounded-2xl flex items-center justify-center">
@@ -176,16 +200,31 @@ export default function Library() {
       )}
 
       {/* Favorites Grid */}
-      {favoritedNames.length > 0 && (
+      {projectFavorites.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {favoritedNames.map((item, index) => (
+          {projectFavorites.map((item, index) => (
             <div
               key={index}
-              className="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
+              className={`p-4 rounded-xl bg-white dark:bg-gray-800 border-2 transition-all ${
+                item.clientFeedback?.status === "approved"
+                  ? "border-green-500 shadow-green-100 dark:shadow-green-900/20"
+                  : item.clientFeedback?.status === "rejected"
+                  ? "border-red-500 shadow-red-100 dark:shadow-red-900/20"
+                  : item.clientFeedback?.status === "needs-work"
+                  ? "border-yellow-500 shadow-yellow-100 dark:shadow-yellow-900/20"
+                  : "border-gray-200 dark:border-gray-700"
+              } hover:shadow-lg`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="font-semibold text-lg text-gray-900 dark:text-white flex-1">
                   {item.name}
+                  {item.clientFeedback?.status && (
+                    <span className="ml-2 text-xs">
+                      {item.clientFeedback.status === "approved" && "✅"}
+                      {item.clientFeedback.status === "rejected" && "❌"}
+                      {item.clientFeedback.status === "needs-work" && "🔄"}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => handleRemove(item.name)}
@@ -203,8 +242,25 @@ export default function Library() {
                   {item.rationale}
                 </p>
               )}
+
+              {/* Client Feedback Display */}
+              {item.clientFeedback?.comments && (
+                <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    💬 {t("clientFeedback.clientComment")}:
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                    "{item.clientFeedback.comments}"
+                  </p>
+                  {item.clientFeedback.clientName && (
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      — {item.clientFeedback.clientName}
+                    </p>
+                  )}
+                </div>
+              )}
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${typeColors[item.type]}`}>
                   {t(`names.types.${item.type}`)}
                 </span>
@@ -225,6 +281,17 @@ export default function Library() {
                 )}
               </div>
 
+              {/* Client Feedback Button */}
+              <button
+                onClick={() => setFeedbackModalName(item)}
+                className="mt-3 w-full px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                {item.clientFeedback ? t("clientFeedback.updateFeedback") : t("clientFeedback.addFeedback")}
+              </button>
+
               {item.timestamp && (
                 <div className="text-xs text-gray-400 dark:text-gray-600 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                   {new Date(item.timestamp).toLocaleDateString()}
@@ -234,6 +301,22 @@ export default function Library() {
           ))}
         </div>
       )}
+
+      {/* Client Feedback Modal */}
+      {feedbackModalName && (
+        <ClientFeedback
+          name={feedbackModalName}
+          onUpdate={(updates) => updateFavoriteName(feedbackModalName.name, updates)}
+          onClose={() => setFeedbackModalName(null)}
+        />
+      )}
+
+      {/* Create Custom Name Modal */}
+      <CreateCustomName
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={handleCreateCustom}
+      />
     </div>
   );
 }

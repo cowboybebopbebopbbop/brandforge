@@ -3,12 +3,31 @@
     "title": "BrandForge",
     "subtitle": "Professional Brand Name Generator"
   },
+  "projects": {
+    "subtitle": "Your naming projects",
+    "createNew": "Create New Project",
+    "open": "Open",
+    "rename": "Rename",
+    "delete": "Delete",
+    "favorites": "Favorites",
+    "generated": "Generated",
+    "currentStep": "Step",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "noProjects": "No projects yet",
+    "noProjectsDesc": "Create your first naming project to get started",
+    "confirmDelete": "Are you sure you want to delete this project? All generated names and favorites will be lost.",
+    "cannotDeleteLast": "Cannot delete the last project. Create a new one first.",
+    "backToProjects": "← Back to Projects"
+  },
   "tabs": {
     "newProject": "New Project",
     "close": "Close tab"
   },
   "steps": {
     "configure": "Configure",
+    "workshop": "Workshop",
     "generate": "Generate",
     "check": "Check Availability",
     "results": "Results"
@@ -27,6 +46,18 @@
   "config": {
     "briefTitle": "Brand Brief",
     "briefSubtitle": "Fill out the brief or import from a file",
+    "sections": {
+      "basics": "Basic Information",
+      "basicsDesc": "Essential details about your brand and industry",
+      "positioning": "Strategy & Positioning",
+      "positioningDesc": "Define your unique market position (S2 Methodology)",
+      "audience": "Target Audience",
+      "audienceDesc": "Who are you trying to reach and what drives them?",
+      "naming": "Naming Preferences",
+      "namingDesc": "Style, tone, and technical requirements for names",
+      "advanced": "Advanced Options",
+      "advancedDesc": "Fine-tune generation parameters"
+    },
     "industry": "Industry / Niche",
     "industryPlaceholder": "e.g., Technology, Fashion, Food...",
     "industryTooltip": "Specify your business sector or market niche. This helps the AI understand your target audience and generate contextually appropriate brand names.",
@@ -91,6 +122,65 @@
     "geographicMarket": "Geographic Market",
     "geographicMarketPlaceholder": "e.g., Global, North America, Europe, Asia...",
     "geographicMarketTooltip": "Where will your brand operate? This affects pronunciation, cultural appropriateness, and domain availability considerations.",
+    "northStar": "North Star (Core Positioning)",
+    "northStarPlaceholder": "e.g., 'The most trusted partner for small business growth' or 'Making luxury accessible to everyone'",
+    "northStarTooltip": "Your brand's core positioning in one sentence. This is the main anchor for all naming decisions - every name should express this essence.",
+    "oppositionSlider": "Market Differentiation",
+    "oppositionSliderTooltip": "How different should your name be from 80% of competitors? Low = safe and conventional, High = bold and oppositional.",
+    "opposition": {
+      "similar": "Similar to market",
+      "different": "Stand out"
+    },
+    "nameCategories": "Name Categories",
+    "nameCategoriesInfo": "Select which types of names to generate. Each category has different strategic value.",
+    "categories": {
+      "informing": "Informative",
+      "informingDesc": "Describes what you do directly",
+      "image_informing": "Image-Informative",
+      "image_informingDesc": "Functional with emotional appeal",
+      "image": "Image/Metaphor",
+      "imageDesc": "Evokes feelings, abstract",
+      "abstract_constructed": "Abstract/Constructed",
+      "abstract_constructedDesc": "Invented words, neologisms"
+    },
+    "companyStrategy": "Company Strategy",
+    "companyStrategyTooltip": "Your market positioning strategy affects the type of names that work best.",
+    "strategies": {
+      "discounter": "Discounter",
+      "discounterDesc": "Value, accessibility, mass-market",
+      "professional": "Professional",
+      "professionalDesc": "Expertise, reliability, trust",
+      "innovator": "Innovator",
+      "innovatorDesc": "Cutting-edge, disruption",
+      "star": "Star/Premium",
+      "starDesc": "Luxury, exclusivity"
+    },
+    "audienceWants": "Audience Wants",
+    "audienceWantsPlaceholder": "e.g., Success, Recognition, Security...",
+    "audienceWantsTooltip": "What does your audience deeply desire? (2-3 values)",
+    "audienceFears": "Audience Fears",
+    "audienceFearsPlaceholder": "e.g., Failure, Missing out, Complexity...",
+    "audienceFearsTooltip": "What does your audience want to avoid? (2-3 fears)",
+    "communicationChannels": "Communication Channels",
+    "communicationChannelsTooltip": "How will customers encounter your brand name? This affects naming requirements.",
+    "channels": {
+      "phone-first": "Phone-first (verbal)",
+      "sales": "Sales presentations",
+      "documents": "Documents/contracts",
+      "international": "International markets"
+    },
+    "abstractionLevel": "Abstraction Level",
+    "abstractionLevelTooltip": "What level should the name communicate at? Concrete product level or abstract mission level?",
+    "abstraction": {
+      "product": "Product",
+      "capabilities": "Capabilities",
+      "beliefs": "Beliefs",
+      "mission": "Mission",
+      "concrete": "← Concrete",
+      "abstract": "Abstract →"
+    },
+    "isCorporate": "Corporate Naming",
+    "isCorporateTooltip": "Enable for company names: prioritizes brevity, neutrality, and international appeal.",
     "mktuClasses": "MKTU Classes",
     "mktuClassesHint": "Select trademark classes for your industry",
     "mktuTooltip": "Nice Classification (MKTU) defines product/service categories for trademark registration. Select classes relevant to your business for accurate trademark checking.",
@@ -127,6 +217,8 @@
     "checking": "Checking...",
     "back": "Back",
     "next": "Next",
+    "skip": "Skip Workshop",
+    "create": "Create",
     "export": "Export",
     "copy": "Copy",
     "selectAll": "Select All",
@@ -137,7 +229,10 @@
     "dislike": "Dislike this name",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
-    "remove": "Remove"
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "save": "Save",
+    "add": "Add"
   },
   "names": {
     "generated": "Generated Names",
@@ -148,7 +243,8 @@
       "compound": "Compound",
       "acronym": "Acronym",
       "descriptive": "Descriptive",
-      "foreign": "Foreign"
+      "foreign": "Foreign",
+      "user": "Custom"
     },
     "filter": "Filter by type",
     "all": "All"
@@ -221,6 +317,7 @@
     "noApiKey": "Please enter your API key in settings",
     "noIndustry": "Please enter an industry or niche",
     "noKeywords": "Please enter at least one keyword",
+    "noNorthStar": "Please enter a North Star positioning statement",
     "noMktuClasses": "Please select at least one MKTU class",
     "generationFailed": "Name generation failed",
     "checkFailed": "Trademark check failed",
@@ -239,6 +336,127 @@
   "success": {
     "briefImported": "Brief imported successfully!"
   },
+  "clientFeedback": {
+    "title": "Client Feedback",
+    "subtitle": "Collect feedback for",
+    "status": "Client Decision",
+    "approved": "Approved",
+    "needsWork": "Needs Work",
+    "rejected": "Rejected",
+    "pending": "Pending",
+    "comments": "Client Comments",
+    "commentsPlaceholder": "Enter client feedback, suggestions, or reasons...",
+    "clientName": "Client Name (Optional)",
+    "clientNamePlaceholder": "e.g., Marketing Director, CEO...",
+    "infoTitle": "How to use client feedback",
+    "infoDescription": "Mark client decisions and add their comments. Use this feedback when generating new name variations or completely new directions.",
+    "addFeedback": "Add Client Feedback",
+    "round": "Round {{round}}"
+  },
+  "clientFeedback": {
+    "title": "Client Feedback",
+    "status": "Client Decision",
+    "statuses": {
+      "approved": "✅ Approved",
+      "needs-work": "🔄 Needs Work",
+      "rejected": "❌ Rejected",
+      "pending": "⏳ Pending Review"
+    },
+    "clientName": "Client/Stakeholder Name",
+    "clientNamePlaceholder": "e.g., Marketing Director, CEO...",
+    "comments": "Feedback Comments",
+    "commentsPlaceholder": "What does the client think about this name? Any specific concerns or preferences...",
+    "previousRound": "Feedback Round",
+    "clientComment": "Client says",
+    "addFeedback": "Add Client Feedback",
+    "updateFeedback": "Update Feedback",
+    "antiMinusingTitle": "Rejection requires feedback",
+    "antiMinusingDesc": "To help improve future suggestions, please explain what doesn't work about this name.",
+    "rejectReasonPlaceholder": "What specifically doesn't work? (tone, meaning, sound, associations...)",
+    "rejectReasonRequired": "Please provide a reason for rejection",
+    "rejectionReason": "Rejection reason"
+  },
+  "associationWorkshop": {
+    "title": "Association Workshop",
+    "subtitle": "Build creative associations to inspire unique names",
+    "methodology": "Methodology from S. Malaikin's Book",
+    "threeTypes": "Three Types of Associations",
+    "examples": "Examples",
+    "properties": "properties",
+    "minRequired": "minimum {{count}} required",
+    "step1": {
+      "title": "Step 1: Key Properties",
+      "description": "What are the 3-6 most important properties or attributes of your offering?",
+      "placeholder": "e.g., Fast, Reliable, Innovative...",
+      "hint": "Add at least 3 properties to continue. These will be the foundation for your naming associations.",
+      "methodologyDesc": "Properties are the key characteristics that define your product or service. Think in three layers:",
+      "functionalTitle": "Functional properties",
+      "functionalDesc": "What does it do? (speed, reliability, efficiency)",
+      "emotionalTitle": "Emotional properties",
+      "emotionalDesc": "How does it make people feel? (confidence, joy, security)",
+      "valuesTitle": "Value properties",
+      "valuesDesc": "What values does it represent? (innovation, sustainability, trust)",
+      "example1Title": "Tech Product",
+      "example1": "Fast, Intelligent, Secure, Seamless, Innovative",
+      "example2Title": "Luxury Service",
+      "example2": "Exclusive, Refined, Personal, Prestigious, Timeless",
+      "example3Title": "Eco Brand",
+      "example3": "Natural, Pure, Sustainable, Honest, Caring"
+    },
+    "step2": {
+      "title": "Step 2: Build Associations",
+      "description": "For each property, add associated words by type: similarity, adjacency, or contrast",
+      "placeholder": "Enter words separated by commas...",
+      "hint": "Add at least 3 associations across all properties to continue.",
+      "similarityQ": "What is it like?",
+      "similarityDesc": "Direct analogies and metaphors from nature, technology, culture. What reminds you of this property?",
+      "similarityExample": "Fast → Lightning, Cheetah, Bullet, Falcon, Arrow",
+      "adjacencyQ": "What is it near to?",
+      "adjacencyDesc": "Concepts, actions, and contexts closely related to this property. What surrounds it?",
+      "adjacencyExample": "Fast → Efficiency, Momentum, Flow, Acceleration, Sprint",
+      "contrastQ": "What is it opposite to?",
+      "contrastDesc": "Opposite concepts that highlight the property by contrast. What does it overcome?",
+      "contrastExample": "Fast → Slow, Sluggish, Delayed, Heavy, Static"
+    },
+    "step3": {
+      "title": "Step 3: Cross & Create Seeds",
+      "description": "Select 2-3 associations to 'cross' and create naming seed ideas that will inspire AI generation",
+      "placeholder": "e.g., Lightning Flow, Velocity Mind, Swift Stream...",
+      "hint": "Seed ideas are optional but highly recommended - they guide the AI to generate more creative names.",
+      "methodologyTitle": "Crossing Technique",
+      "methodologyDesc": "Crossing associations creates new semantic combinations that become naming seeds. This is where creativity meets strategy.",
+      "crossingTechnique": "How to cross effectively",
+      "technique1": "Combine words from different properties (e.g., Fast + Reliable = SwiftGuard)",
+      "technique2": "Mix different association types (Similarity + Adjacency = CheetahFlow)",
+      "technique3": "Use contrasts creatively (Fast + opposite of Complex = VelocitySimple → Velosimple)",
+      "technique4": "Think of compound words, metaphors, or entirely new constructions",
+      "exampleTitle": "Example",
+      "exampleText": "Properties: Fast + Intelligent → Associations: Lightning (fast/similarity) + Mind (intelligent/adjacency) → Seed: LightMind, MindBolt, Cerebro, Synapse"
+    },
+    "selectProperty": "Select a property to add associations",
+    "selectToCross": "Select associations to cross",
+    "createSeedIdea": "Create seed idea from selected associations",
+    "types": {
+      "similarity": "Similarity",
+      "adjacency": "Adjacency",
+      "contrast": "Contrast"
+    },
+    "seedIdeas": "Seed Ideas"
+  },
+  "common": {
+    "optional": "optional"
+  },
+  "customName": {
+    "title": "Create Your Own Name",
+    "description": "Add a custom brand name with your own explanation",
+    "nameLabel": "Brand Name",
+    "namePlaceholder": "e.g., Zenith, FlowSync, Quantum...",
+    "nameRequired": "Name is required",
+    "rationaleLabel": "Meaning & Rationale",
+    "rationalePlaceholder": "What does this name mean? Why does it work for the brand? What feeling or positioning does it convey...",
+    "rationaleHint": "Explain the strategic thinking behind this name",
+    "createButton": "Create Name"
+  },
   "feedback": {
     "title": "AI Learning from Your Feedback",
     "description": "Your likes and dislikes help improve future name suggestions",
@@ -250,5 +468,41 @@
     "cleanGeneration": "Clean Generation",
     "useNotesHint": "Generate names based on your likes and dislikes",
     "cleanHint": "Generate fresh names without feedback"
+  },
+  "share": {
+    "title": "Share Project",
+    "signInRequired": "Sign In Required",
+    "signInHint": "Please sign in with Google to share your projects",
+    "createLink": "Create Share Link",
+    "createButton": "Create Link",
+    "creating": "Creating...",
+    "activeLinks": "Active Share Links",
+    "noLinks": "No active share links",
+    "viewOnly": "View Only",
+    "canComment": "Can Comment",
+    "canEdit": "Can Edit",
+    "views": "views",
+    "copied": "Copied!",
+    "copyLink": "Copy Link",
+    "deleteLink": "Delete Link"
+  },
+  "availability": {
+    "title": "Availability Check",
+    "checking": "Checking...",
+    "check": "Check Availability",
+    "domains": "Domain Names",
+    "socials": "Social Media Handles",
+    "available": "Possibly available",
+    "taken": "Likely taken",
+    "clickToCheck": "Click to verify →",
+    "hint": "Click \"Check Availability\" to see domain and social media availability"
+  },
+  "brandPreview": {
+    "title": "Brand Identity Preview",
+    "generating": "Generating...",
+    "generate": "Generate Logo Preview",
+    "variations": "Logo Variations",
+    "mockup": "Mockup Preview",
+    "hint": "Select a style and click \"Generate Logo Preview\" to see your brand identity"
   }
 }

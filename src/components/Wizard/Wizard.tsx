@@ -1,6 +1,7 @@
 import { useAppStore } from "../../store";
 import StepIndicator from "./StepIndicator";
 import ConfigureStep from "./steps/ConfigureStep";
+import AssociationWorkshopStep from "./steps/AssociationWorkshopStep";
 import GenerateStep from "./steps/GenerateStep";
 import CheckStep from "./steps/CheckStep";
 import ResultsStep from "./steps/ResultsStep";
@@ -43,10 +44,12 @@ export default function Wizard({ onOpenSettings }: WizardProps) {
       case 1:
         return <ConfigureStep onOpenSettings={onOpenSettings} />;
       case 2:
-        return <GenerateStep />;
+        return <AssociationWorkshopStep />;
       case 3:
-        return <CheckStep />;
+        return <GenerateStep />;
       case 4:
+        return <CheckStep />;
+      case 5:
         return <ResultsStep />;
       default:
         return <ConfigureStep onOpenSettings={onOpenSettings} />;

@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "./store";
 import { AuthProvider } from "./contexts/AuthContext";
 import { PasswordGate } from "./components/PasswordGate/PasswordGate";
-import TabManager from "./components/TabManager/TabManager";
 import Wizard from "./components/Wizard/Wizard";
 import Settings from "./components/Settings/Settings";
 import Header from "./components/Header/Header";
 import Library from "./components/Library/Library";
 import SetupBanner from "./components/SetupBanner/SetupBanner";
 import OnboardingModal from "./components/OnboardingModal/OnboardingModal";
+import ProjectsView from "./components/ProjectsView/ProjectsView";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 
 function AppContent() {
@@ -17,7 +17,7 @@ function AppContent() {
   const [showSettings, setShowSettings] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { settings, updateSettings } = useAppStore();
+  const { settings, updateSettings, currentView } = useAppStore();
   
   // Enable Firebase sync
   useFirebaseSync();
@@ -39,21 +39,24 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${settings.theme === 'dark' ? 'dark' : ''}`}>
-      <Header 
-        onSettingsClick={() => setShowSettings(true)}
-        onLanguageToggle={toggleLanguage}
-        currentLanguage={settings.language}
-        onLibraryClick={() => setShowLibrary(!showLibrary)}
-        showLibrary={showLibrary}
-      />
+      {currentView === "project-detail" && (
+        <Header 
+          onSettingsClick={() => setShowSettings(true)}
+          onLanguageToggle={toggleLanguage}
+          currentLanguage={settings.language}
+          onLibraryClick={() => setShowLibrary(!showLibrary)}
+          showLibrary={showLibrary}
+        />
+      )}
       
       <main className="container mx-auto px-4 py-6">
-        {showLibrary ? (
+        {currentView === "projects" ? (
+          <ProjectsView />
+        ) : showLibrary ? (
           <Library />
         ) : (
           <>
             {!settings.apiKey && <SetupBanner onOpenSettings={() => setShowSettings(true)} />}
-            <TabManager />
             <Wizard onOpenSettings={() => setShowSettings(true)} />
           </>
         )}

@@ -6,9 +6,10 @@ interface StepIndicatorProps {
 
 const steps = [
   { id: 1, key: "configure" },
-  { id: 2, key: "generate" },
-  { id: 3, key: "check" },
-  { id: 4, key: "results" },
+  { id: 2, key: "workshop" },
+  { id: 3, key: "generate" },
+  { id: 4, key: "check" },
+  { id: 5, key: "results" },
 ];
 
 export default function StepIndicator({ currentStep }: StepIndicatorProps) {

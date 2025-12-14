@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../../store";
+import AvailabilityChecker from "../../AvailabilityChecker/AvailabilityChecker";
+import BrandPreview from "../../BrandPreview/BrandPreview";
 
 export default function ResultsStep() {
   const { t } = useTranslation();
@@ -8,6 +10,8 @@ export default function ResultsStep() {
   const currentTab = getCurrentTab();
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState<"all" | "safe" | "caution" | "risk">("all");
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [showBrandPreview, setShowBrandPreview] = useState(false);
 
   if (!currentTab) return null;
 
@@ -226,6 +230,23 @@ export default function ResultsStep() {
                 )}
               </div>
             )}
+
+            {/* Availability & Brand Preview */}
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <AvailabilityChecker name={name.name} compact />
+              <button
+                onClick={() => {
+                  setSelectedName(name.name);
+                  setShowBrandPreview(true);
+                }}
+                className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Preview Logo
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -249,6 +270,34 @@ export default function ResultsStep() {
           Start New Search
         </button>
       </div>
+
+      {/* Brand Preview Modal */}
+      {showBrandPreview && selectedName && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Brand Preview: {selectedName}
+              </h2>
+              <button
+                onClick={() => setShowBrandPreview(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <BrandPreview 
+                name={selectedName} 
+                industry={currentTab?.config.industry}
+                keywords={currentTab?.config.keywords}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
