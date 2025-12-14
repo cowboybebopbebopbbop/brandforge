@@ -1,13 +1,18 @@
 /**
  * Versioned API Response Schemas for BrandForge
  * 
- * P0 Fix: Separate schemas for different generation types to avoid contract mismatches
+ * v1.2.1 Fixes:
+ * - P0-A: All 3 contracts documented
+ * - P0-B: camelCase everywhere
+ * - P0-C: requestedCount/returnedCount in meta
+ * - P1-E: Rationale word counts (EN: 18-45, RU: 14-35)
+ * - P1-D: Root extraction uses tokens only (no prefix derivatives)
  */
 
 import { NameCategory4, NameChecks } from './store';
 
 // Schema version for compatibility tracking
-export const SCHEMA_VERSION = '1.1.0';
+export const SCHEMA_VERSION = '1.2.0';
 
 /**
  * Strategy Synthesis Response
@@ -56,6 +61,9 @@ export interface NameGenerationResponse {
   runId?: string;
   candidates: NameCandidate[];
   meta?: {
+    requestedCount: number;    // P0-C: Original request
+    returnedCount: number;     // P0-C: Actual after validation
+    topUpAttempts: number;     // P0-C: Retry calls made (max 3)
     generationCount: number;
     feedbackApplied: boolean;
     territoriesUsed: string[];
@@ -75,7 +83,7 @@ export interface NameCandidate {
   name: string;
   type: 'invented' | 'compound' | 'acronym' | 'descriptive' | 'foreign';
   category: NameCategory4;  // ✓ Standardized: always 'category', never 'category_4'
-  rationale: string;         // ✓ Always required, 20-50 words enforced
+  rationale: string;         // ✓ EN: 18-45 words, RU: 14-35 words (P1-E)
   
   // OPTIONAL FIELDS
   territoryId?: string;      // References territories from strategy
@@ -199,6 +207,9 @@ export const NAME_GENERATION_SCHEMA = {
     meta: {
       type: 'object' as const,
       properties: {
+        requestedCount: { type: 'number' as const },  // P0-C
+        returnedCount: { type: 'number' as const },   // P0-C
+        topUpAttempts: { type: 'number' as const },   // P0-C
         generationCount: { type: 'number' as const },
         feedbackApplied: { type: 'boolean' as const },
         territoriesUsed: {
@@ -214,22 +225,30 @@ export const NAME_GENERATION_SCHEMA = {
 /**
  * Validation helpers
  */
-export function validateRationale(rationale: string): { valid: boolean; error?: string; wordCount: number } {
+export function validateRationale(
+  rationale: string, 
+  language: 'english' | 'russian' | 'both' = 'english'
+): { valid: boolean; error?: string; wordCount: number } {
   if (!rationale || rationale.trim().length === 0) {
     return { valid: false, error: 'Rationale is empty', wordCount: 0 };
   }
   
-  // P0 Fix: Unified rationale validation
-  // Word count (approximate, works for both EN/RU)
+  // P1-E: Language-specific word count validation
   const words = rationale.trim().split(/\s+/);
   const wordCount = words.length;
   
-  if (wordCount < 10) {
-    return { valid: false, error: `Rationale too short (${wordCount} words, need 10+ words)`, wordCount };
+  // P1-E: Standardized word counts
+  // EN: 18-45 words (standard commercial range)
+  // RU: 14-35 words (denser language)
+  const minWords = language === 'russian' ? 14 : 18;
+  const maxWords = language === 'russian' ? 35 : 45;
+  
+  if (wordCount < minWords) {
+    return { valid: false, error: `Rationale too short (${wordCount} words, need ${minWords}+ words)`, wordCount };
   }
   
-  if (wordCount > 80) {
-    return { valid: false, error: `Rationale too long (${wordCount} words, keep under 80 words)`, wordCount };
+  if (wordCount > maxWords) {
+    return { valid: false, error: `Rationale too long (${wordCount} words, keep under ${maxWords} words)`, wordCount };
   }
   
   // Check for template fragments
@@ -271,26 +290,14 @@ export function tokenizeName(name: string): string[] {
 }
 
 /**
- * P0 Fix: Better root/stem extraction
- * Uses linguistic tokens instead of character prefixes
+ * P1-D Fix: Better root/stem extraction
+ * Uses TOKENS ONLY for batch validation (not prefix derivatives)
+ * Prefix matching is reserved for drift/overuse analytics only
  */
 export function extractRoots(name: string): string[] {
-  const tokens = tokenizeName(name);
-  const roots: string[] = [];
-  
-  for (const token of tokens) {
-    // For short tokens (≤4 chars), use the whole token
-    if (token.length <= 4) {
-      roots.push(token);
-    } else {
-      // For longer tokens, use first 5 characters as root
-      // But also track the full token for better matching
-      roots.push(token.substring(0, 5));
-      roots.push(token); // Full token for exact matching
-    }
-  }
-  
-  return roots;
+  // P1-D: Return tokens only, no prefix derivatives
+  // This prevents false positives on short words
+  return tokenizeName(name);
 }
 
 /**
