@@ -125,8 +125,12 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-    // Skip empty lines and markdown artifacts
+    // Skip empty lines, markdown artifacts, and preamble text
     if (!line || line === '---' || line.startsWith('```')) continue;
+    
+    // Skip preamble/intro sentences (contains common intro phrases)
+    if (line.match(/^(here are|here's|i've generated|below are|following are|these are)/i)) continue;
+    if (line.match(/adhering to|based on|according to|with the following/i) && line.length > 40) continue;
     
     // Match pattern: "1. **Name:** ActualBrandName" or "**Name:** ActualBrandName"
     const nameFieldMatch = line.match(/^(?:\d+\.\s*)?\*?\*?Name:?\*?\*?\s*(.+)$/i);
@@ -186,7 +190,11 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     
     // Fallback: Match simple patterns like "1. BrandName - Rationale" or "1. **BrandName** - Rationale"
     const simpleMatch = line.match(/^\d+\.\s+\*?\*?([^*:\-\n]+)\*?\*?\s*[\-:]?\s*(.*)$/);
-    if (simpleMatch && !line.toLowerCase().includes('name:') && !line.toLowerCase().includes('type:') && !line.toLowerCase().includes('rationale:')) {
+    if (simpleMatch && 
+        !line.toLowerCase().includes('name:') && 
+        !line.toLowerCase().includes('type:') && 
+        !line.toLowerCase().includes('rationale:') &&
+        simpleMatch[1].trim().split(/\s+/).length <= 4) { // Only accept if "name" part is 4 words or less
       // Save previous name if exists and valid
       if (currentName && hasValidName && currentName.length > 1) {
         const cleanRationale = currentRationale.trim();
