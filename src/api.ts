@@ -100,26 +100,59 @@ export interface TrademarkCheckRequest {
 const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   const names: GeneratedName[] = [];
   
-  // Try to parse as JSON first
+  // Try to parse as JSON first (primary method)
   try {
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) {
-      return parsed.slice(0, count).map(item => ({
+    // Handle markdown code blocks around JSON
+    let jsonText = text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```\s*/i, '').replace(/\s*```$/, '');
+    }
+    
+    const parsed = JSON.parse(jsonText);
+    
+    // Handle both array and object with names array
+    const namesArray = Array.isArray(parsed) ? parsed : (parsed.names || []);
+    
+    if (namesArray.length > 0) {
+      return namesArray.slice(0, count).map((item: any) => ({
         name: item.name || item.title || '',
         type: item.type || 'invented',
-        rationale: item.rationale || item.description || '',
-        selected: false
-      }));
+        rationale: item.rationale || item.description || item.explanation || '',
+        selected: false,
+        category: item.category
+      })).filter((item: any) => item.name && item.name.length > 0);
     }
-  } catch {
-    // Not JSON, continue with text parsing
+  } catch (e) {
+    // JSON parsing failed, try to extract JSON from text
+    const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/m);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed)) {
+          return parsed.slice(0, count).map(item => ({
+            name: item.name || item.title || '',
+            type: item.type || 'invented',
+            rationale: item.rationale || item.description || item.explanation || '',
+            selected: false,
+            category: item.category
+          })).filter(item => item.name && item.name.length > 0);
+        }
+      } catch {
+        // Continue to text parsing
+      }
+    }
   }
   
-  // Parse text response line by line
+  console.log('Parsing AI response (fallback to text parsing):', text.substring(0, 500));
+  
+  // Parse text response line by line (FALLBACK - JSON is preferred)
   const lines = text.split('\n');
   let currentName = '';
   let currentType: GeneratedName['type'] = 'invented';
   let currentRationale = '';
+  let currentCategory = '';
   let hasValidName = false;
   
   for (let i = 0; i < lines.length; i++) {
@@ -157,10 +190,12 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
           name: currentName,
           type: currentType,
           rationale: meaningfulRationale,
-          selected: false
+          selected: false,
+          category: currentCategory || undefined
         });
         currentRationale = '';
         currentType = 'invented';
+        currentCategory = '';
         hasValidName = false;
       }
       currentName = nameFieldMatch[1].replace(/\*+/g, '').trim();
@@ -178,6 +213,13 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
       else if (typeText === 'descriptive' || typeText.startsWith('descriptive')) currentType = 'descriptive';
       else if (typeText === 'foreign' || typeText.startsWith('foreign')) currentType = 'foreign';
       else currentType = 'invented'; // Default to invented for safety
+      continue;
+    }
+    
+    // Match pattern: "**Category:** informing" or "* **Category:** informing"
+    const categoryFieldMatch = line.match(/^\*?\s*\*?\*?Category:?\*?\*?\s*(.+)$/i);
+    if (categoryFieldMatch) {
+      currentCategory = categoryFieldMatch[1].replace(/\*+/g, '').trim().toLowerCase();
       continue;
     }
     
@@ -208,10 +250,12 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
           name: currentName,
           type: currentType,
           rationale: meaningfulRationale,
-          selected: false
+          selected: false,
+          category: currentCategory || undefined
         });
         currentRationale = '';
         currentType = 'invented';
+        currentCategory = '';
         hasValidName = false;
       }
       
@@ -251,7 +295,8 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
       name: currentName,
       type: currentType,
       rationale: meaningfulRationale,
-      selected: false
+      selected: false,
+      category: currentCategory || undefined
     });
   }
   
@@ -298,10 +343,24 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
             parts: [{ text: prompt }]
           }],
           generationConfig: {
-            temperature: temperature, // Use provided temperature
+            temperature: temperature,
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  type: { type: "string", enum: ["invented", "compound", "acronym", "descriptive", "foreign"] },
+                  category: { type: "string", enum: ["informing", "image_informing", "image", "abstract_constructed"] },
+                  rationale: { type: "string" }
+                },
+                required: ["name", "type", "rationale"]
+              }
+            }
           }
         })
       }

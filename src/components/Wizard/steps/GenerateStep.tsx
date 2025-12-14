@@ -58,66 +58,27 @@ export default function GenerateStep() {
       high: "highly creative and experimental"
     };
 
-    // Build the complete prompt
-    let prompt = `# ROLE
+    // Build the complete prompt - SIMPLIFIED for JSON schema output
+    let prompt = `You are an expert brand naming strategist. Generate exactly ${settings.resultsPerGeneration} unique, creative brand names.
 
-You are a senior brand naming strategist using a structured creative process. You DON'T just generate names—you THINK through the naming process systematically using Chain-of-Thought reasoning.
-
----
-
-# PHASE 1: STRATEGIC ANALYSIS (Complete this BEFORE generating names)
-
-## 1.1 Positioning Essence
-First, identify the ONE core concept that captures this brand's soul:
+# BRIEF
 - Industry: ${config.industry || "business"}
 - North Star: ${config.northStar || "Not specified"}
 
-## 1.2 Semantic Territory Mapping
-Identify 5 DISTINCT semantic fields to explore (avoid overlap):
-1. **Direct/Functional** - what the product literally does
-2. **Emotional/Aspirational** - how customers want to feel
-3. **Metaphorical** - unexpected comparisons from nature, science, art
-4. **Abstract/Invented** - new words, creative morphology
-5. **Cultural/Symbolic** - archetypal references, cultural symbols
-
-## 1.3 Root Word Diversity Check
-⚠️ CRITICAL: Before generating, mentally list 20+ UNIQUE root words you'll use.
-DO NOT rely on common naming roots like: well, zen, peak, mind, flow, bright, smart, pro, max, plus, core, hub, sync, vibe, spark, nova, nest, glow, edge, wave.
-Instead, find FRESH roots from: industry-specific terminology, Latin/Greek, nature, architecture, music, astronomy, mythology, textures, materials, movement verbs, emotional states.
-
-**🚫 ANTI-PATTERN: ROOT REPETITION WITHIN ONE GENERATION**
-- NEVER generate multiple names with the same root in ONE generation
-- Example BAD: PranaV, PranaFlow, Prana Core (all use "Prana")
-- Example BAD: VayuV, ShivaV, DhyanaV, SamadhiV (all use V-suffix pattern)
-- Example GOOD: PranaV, Elan, Qi, Anima, Esprit (diverse roots, same essence)
-
-**✅ DIVERSITY REQUIREMENT:**
-- Each of the ${settings.resultsPerGeneration} names must use a DIFFERENT linguistic root
-- Only repeat a root if user explicitly LIKED a name with that root in previous generations
-- Vary suffixes: if you use -V once, don't use it again in same generation
-- Vary prefixes: if you use Eco- once, find alternatives (Bio-, Verde-, Green-, Natura-)
+# NAMING GUIDELINES
+- Create ACTUAL brand names (like "Nike", "Aura", "Zenith", "Lumina") - NOT category labels
+- Each name must be unique and memorable
+- Mix different naming styles: invented words, compounds, foreign words, etc.
+- Use diverse linguistic roots - avoid repeating the same root across multiple names
 
 ${(currentTab.generationCount || 0) >= 5 ? `
-⚠️ **LANGUAGE DRIFT WARNING (Generation ${currentTab.generationCount}):**
-You're drifting into Sanskrit/Yoga terminology (Prana, Shanti, Nirvana, Turiya, Brahma, etc.).
-**STOP THIS IMMEDIATELY** unless the brand is specifically yoga/meditation related.
-Stay focused on the original brief and industry context.
-Provide FULL, MEANINGFUL rationales for each name (not just "Comb" or fragments).
+⚠️ Generation ${currentTab.generationCount}: Focus on fresh vocabulary and complete rationales.
 ` : ''}
 
-${currentTab.learningSummary ? `
----
-
-# 📊 LEARNED PATTERNS FROM PREVIOUS SESSIONS
-
+${currentTab.learningSummary ? `# LEARNED PATTERNS
 ${currentTab.learningSummary}
-
-**USE THESE INSIGHTS:** Apply the working patterns, avoid the anti-patterns, and explore the suggested directions.
 ` : ''}
----
-
-# REQUIREMENTS
-
+# SPECIFICATIONS
 `;
 
     const requirements: string[] = [];
@@ -307,351 +268,92 @@ ${currentTab.learningSummary}
     if (includeFeedback && (likedNames.length > 0 || dislikedNames.length > 0 || clientApproved.length > 0 || clientNeedsWork.length > 0 || clientRejected.length > 0)) {
       prompt += `\n\n---
 
-# USER FEEDBACK & CRITICAL REQUIREMENTS
+# USER FEEDBACK
 
-Based on previous generations, the user has provided feedback. This is CRITICAL - you MUST follow these rules:
+Based on previous feedback, follow these rules:
 `;
 
       // CLIENT FEEDBACK SECTION (highest priority)
       if (clientApproved.length > 0 || clientNeedsWork.length > 0 || clientRejected.length > 0) {
-        prompt += `\n## 🎯 CLIENT FEEDBACK (HIGHEST PRIORITY)
-
-This is feedback from the actual client/stakeholder. This takes PRECEDENCE over internal designer preferences.
-`;
+        prompt += `\n## Client Feedback (Priority)\n`;
 
         if (clientApproved.length > 0) {
-          prompt += `\n**✅ CLIENT APPROVED Names** (client loves these - understand the winning formula):\n`;
+          prompt += `\nApproved names (understand the pattern, but use DIFFERENT roots):\n`;
           clientApproved.forEach(name => {
-            const feedback = name.clientFeedback;
-            prompt += `• ${name.name} (${name.type})`;
-            if (feedback?.clientName) prompt += ` - approved by ${feedback.clientName}`;
-            if (feedback?.comments) prompt += `\n  Client says: "${feedback.comments}"`;
-            prompt += `\n  Rationale: ${name.rationale || 'Professional recommendation'}\n`;
+            prompt += `• ${name.name} - ${name.rationale || 'liked'}\n`;
           });
-          prompt += `\n**Strategy for approved names:**
-- These names represent the WINNING direction from client perspective
-- Analyze what made these succeed: tone, structure, meaning, cultural fit
-
-**🚫 ABSOLUTE PROHIBITIONS (ZERO TOLERANCE):**
-1. **NO WORD RECYCLING:** NEVER use ANY word from approved names in ANY form
-   - If "Verdi" approved → BAN: Verdi, Verde, Verdant, VerdiFlow, GreenVerdi, VerdiNest
-   - If "Prana" approved → BAN: Prana, PranaV, PranaFlow, ShantiV, VayuV, any Sanskrit with V-suffix
-   - If "Tejas" approved → BAN: Tejas, Vajra, Agni, any related Sanskrit terms
-
-2. **NO ROOT BORROWING:** Approved name's root is BANNED from all derivatives
-   - If "Verdi" (Italian green) → DON'T use Verde, Vert, Verdure, any green-root
-   - If "Zen" approved → DON'T use Zenith, Zephyr, any zen-root
-
-3. **NO CULTURAL REPETITION IN SAME GENERATION:** If approved name is Sanskrit/Yoga:
-   - Generate MAX 1-2 Sanskrit-inspired names per generation
-   - Explore OTHER cultures: Latin botanical, Greek mythology, Japanese nature, Arabic poetry
-
-4. **NO SUFFIX COPYING:** Don't replicate suffix patterns from approved names
-   - If "PranaV" approved → DON'T make all names with -V suffix (ShantiV, VayuV)
-   - Vary your linguistic structures
-
-**✅ WHAT YOU SHOULD DO:**
-- **Essence Analysis:** Why did "Verdi" work? (Short, elegant, nature-evoked, Italian sophistication)
-- **Parallel Exploration:** Find OTHER words with SAME qualities but DIFFERENT roots
-  - Verdi = nature + elegance → Try "Sorrel" (herb), "Linden" (tree), "Quince" (fruit)
-- **Cross-Cultural Mining:** If approved names are Sanskrit → explore Latin, Greek, Japanese
-- **Attribute Matching:** Match the FEELING (calm, strong, fresh) with NEW vocabulary
-
-**EXAMPLES OF CORRECT APPROACH:**
-- Client approved "Verdi" (green, Italian, elegant)
-  ✅ GOOD: Sorrel, Linden, Quince, Cypress, Thyme (different roots, same feeling)
-  ❌ BAD: VerdiFlow, GreenCore, Verdant, EcoVerde (recycling approved word)
-
-- Client approved "PranaV" (Sanskrit vitality)
-  ✅ GOOD: Elan (French), Qi (Chinese), Esprit (French), Anima (Latin)
-  ❌ BAD: ShantiV, VayuV, NirvanaV, Brahma (same culture + suffix pattern)
-\n`;
+          prompt += `→ Generate NEW names with similar FEELING but completely DIFFERENT words.\n`;
         }
 
         if (clientNeedsWork.length > 0) {
-          prompt += `\n**🔄 CLIENT REQUESTED REFINEMENT:**\n`;
+          prompt += `\nNeeds refinement:\n`;
           clientNeedsWork.forEach(name => {
             const feedback = name.clientFeedback;
-            prompt += `• ${name.name} - interesting direction, but needs adjustment`;
-            if (feedback?.clientName) prompt += ` (${feedback.clientName})`;
-            if (feedback?.comments) prompt += `\n  Client feedback: "${feedback.comments}"`;
-            prompt += `\n`;
+            prompt += `• ${name.name}${feedback?.comments ? `: "${feedback.comments}"` : ''}\n`;
           });
-          prompt += `\n**How to refine:**
-- Take the core concept but adjust the execution
-- Address specific client concerns mentioned in comments
-- Explore variations that fix the issues while keeping the good parts
-\n`;
         }
 
         if (clientRejected.length > 0) {
-          prompt += `\n**❌ CLIENT REJECTED Names** (client didn't connect with these):\n`;
+          prompt += `\nRejected (avoid these directions):\n`;
           clientRejected.forEach(name => {
-            const feedback = name.clientFeedback;
-            prompt += `• ${name.name}`;
-            if (feedback?.comments) prompt += ` - "${feedback.comments}"`;
-            prompt += `\n`;
+            prompt += `• ${name.name}\n`;
           });
-          prompt += `\n**Critical rules for rejected names:**
-- Avoid the style, tone, or approach of these names
-- Client feedback indicates these directions don't resonate
-- Move away from these semantic territories completely
-\n`;
         }
       }
 
-      // DESIGNER'S INTERNAL FEEDBACK
-      if (likedNames.length > 0 || dislikedNames.length > 0) {
-        prompt += `\n## 💭 DESIGNER'S INTERNAL FEEDBACK\n`;
-      }
-
+      // DESIGNER'S INTERNAL FEEDBACK - simplified
       if (dislikedNames.length > 0) {
-        // Extract words and roots from disliked names - MORE AGGRESSIVE
-        const dislikedWords = new Set<string>();
-        const dislikedRoots = new Set<string>();
+        prompt += `\n## Disliked Names (avoid these and similar):\n`;
         dislikedNames.forEach(name => {
-          // Split by common separators and spaces
-          const words = name.name.split(/[\s\-_\.]+/);
-          words.forEach(word => {
-            const lowerWord = word.toLowerCase();
-            dislikedWords.add(lowerWord);
-            // Add multiple root variations
-            if (word.length > 4) {
-              dislikedRoots.add(lowerWord.substring(0, 4));
-              dislikedRoots.add(lowerWord.substring(0, 5));
-            }
-            if (word.length > 6) {
-              dislikedRoots.add(lowerWord.substring(0, 6));
-            }
-          });
+          prompt += `• ${name.name}\n`;
         });
-
-        // DETECT OVERUSED ROOTS: If many names share the same root pattern, ban it
-        const rootFrequency = new Map<string, number>();
-        allGeneratedNames.forEach(name => {
-          const words = name.name.split(/[\s\-_\.]+/);
-          words.forEach(word => {
-            if (word.length > 5) {
-              const root = word.toLowerCase().substring(0, 5);
-              rootFrequency.set(root, (rootFrequency.get(root) || 0) + 1);
-            }
-          });
-        });
-        
-        // If a root appears in 5+ generated names, ban it
-        rootFrequency.forEach((count, root) => {
-          if (count >= 5) {
-            dislikedRoots.add(root);
-          }
-        });
-
-        prompt += `\n**🚫 ABSOLUTE BAN LIST - DISLIKED NAMES:**\n`;
-        dislikedNames.forEach(name => {
-          prompt += `• "${name.name}" - BANNED\n`;
-        });
-        
-        prompt += `\n**⛔ BANNED WORDS (do not use in ANY form):**
-${Array.from(dislikedWords).map(w => `• ${w}`).join('\n')}
-
-**⛔ BANNED ROOT PATTERNS (do not use words starting with):**
-${Array.from(dislikedRoots).map(r => `• ${r}*`).join(', ')}
-
-**STRICT DISLIKE ENFORCEMENT RULES:**
-1. ❌ NEVER use any word from the banned list, even modified (no plurals, no prefixes, no suffixes)
-2. ❌ NEVER use any word that STARTS with a banned root pattern
-3. ❌ NEVER use synonyms or translations of banned words
-4. ❌ NEVER combine banned words with other words
-5. ❌ If "Zen" is banned, also ban: Zenith, ZenFlow, MyZen, Zenly, etc.
-6. ❌ If "Peak" is banned, also ban: Peaked, Peakly, PeakFlow, SunPeak, etc.
-
-**BEFORE OUTPUTTING ANY NAME:** Check if it contains ANY banned word or root. If yes, DISCARD and generate a completely different name.
-
-`;
       }
 
       if (likedNames.length > 0) {
-        prompt += `\n**✓ LIKED Names** (understand the PATTERN and style, but generate NEW names):\n`;
+        prompt += `\n## Liked Names (create NEW names with similar feeling):\n`;
         likedNames.forEach(name => {
-          prompt += `• ${name.name} (${name.type}) - ${name.rationale || 'User liked this style'}\n`;
+          prompt += `• ${name.name} - ${name.rationale || 'liked'}\n`;
         });
-        
-        prompt += `\n**How to use liked names:**
-- Understand WHY these names work (tone, structure, feel, meaning)
-- Generate NEW names that capture the same essence but are completely DIFFERENT words
-- Match the linguistic style, word structure, and brand feeling
-- DO NOT just copy or slightly modify the liked names
-
-`;
       }
-
-      prompt += `\n**GENERATION STRATEGY:**
-- Each new generation should explore DIFFERENT semantic territories
-- If previous names didn't work, dig DEEPER: new roots, associations, metaphors
-- Go WIDER: explore adjacent concepts, lateral thinking
-- NEVER repeat rejected patterns or words
-- Treat each generation as a fresh creative exploration
-
-**🚫 ROOT DIVERSITY ENFORCEMENT:**
-- MAX 2 names per root word in ONE generation
-  - If using "zen" root → MAX: ZenFlow, Zenith (stop here, move to different root)
-  - If using "veda" root → MAX: VedaFlow, Vedanta (stop here, explore NEW territory)
-- VARIETY IS MANDATORY: Each generation must use AT LEAST 15+ different root words
-- Track your roots mentally: zen, flow, peak, mind, veda, prana, zen... STOP! Too much repetition
-- If you catch yourself using same root 3+ times → DISCARD and find fresh vocabulary
-`;
     }
 
     prompt += `
 
----
+# OUTPUT REQUIREMENTS
 
-# OUTPUT FORMAT
+Generate exactly ${settings.resultsPerGeneration} brand names. For each name:
+- **name**: A real brand name (like "Aura", "Zenith", "Lumina", "Cascade") - NOT a category or description
+- **type**: invented, compound, acronym, descriptive, or foreign
+- **category**: informing, image_informing, image, or abstract_constructed  
+- **rationale**: 20-50 word explanation of meaning, positioning, and feeling it creates
 
-For each name, provide the following in a structured format:
+Example of a GOOD name object:
+{"name": "Verdana", "type": "invented", "category": "image", "rationale": "Derived from 'verdant' meaning green and flourishing. Evokes growth, vitality, and natural wellness. The soft 'a' ending creates an approachable, feminine feel ideal for wellness brands."}
 
-1. **Name:** The brand name
-2. **Type:** One of: invented, compound, acronym, descriptive, or foreign
-3. **Category:** One of: informing, image_informing, image, abstract_constructed
-4. **Rationale:** A short, strategic explanation that clarifies the intended brand feeling, positioning, and meaning
-5. **Checks:** (only if concerning)
-   - negative_reading_risk: low/medium/high (negative readings or double meanings)
-   - phone_spelling_risk: low/medium/high (how easy to spell when heard)
-   - ru_phonetic_risk: low/medium/high (difficult consonant clusters in Russian)
-   - intercultural_risk: low/medium/high (problematic meanings in other cultures/languages)
+Example of BAD output (DO NOT DO THIS):
+{"name": "Direct/Functional", ...} ← This is a category label, NOT a brand name
+{"name": "Emotional/Aspirational", ...} ← This is a category label, NOT a brand name
 
-Present all ${settings.resultsPerGeneration} names in a numbered list.
-
-**CRITICAL: EVERY NAME MUST HAVE A RATIONALE**
-- NEVER output a name without a rationale
-- Rationale should be 20-40 words explaining the strategic thinking
-- Even on later generations (6+), maintain full rationale quality
-- If you're running low on ideas, that's when rationale becomes MORE important, not less
-
-**❌ UNACCEPTABLE OUTPUTS:**
-- "Comb" (just one word with no context)
-- Name without rationale
-- Rationale that's a fragment or incomplete sentence
-- Generic descriptions like "Good name" or "Nice option"
-
-**✅ REQUIRED QUALITY STANDARD:**
-Every rationale must include:
-1. What the name means/references
-2. Why it fits the brand positioning
-3. What feeling/impression it creates
-
-**EXAMPLE:**
-❌ BAD: "Verdi - Rationale: Comb"
-✅ GOOD: "Verdi - Rationale: Italian word for 'green,' evoking natural vitality and European sophistication. The single-syllable simplicity makes it memorable while the cultural reference adds depth."
-
-${(currentTab.generationCount || 0) >= 5 ? `
-
-⚠️ **GENERATION ${currentTab.generationCount} QUALITY CHECK:**
-You may be experiencing creative fatigue. This is EXACTLY when quality control matters most.
-- Re-read the brief before generating
-- Take time to write full, thoughtful rationales
-- If inspiration is low, revisit earlier successful patterns
-- NEVER compromise on rationale quality just because this is generation ${currentTab.generationCount}
-` : ''}
-
-**Flag names with medium or high risk** - don't hide them, but mark them clearly so the user can make informed decisions.
+${(currentTab.generationCount || 0) >= 5 ? `Note: Generation ${currentTab.generationCount} - maintain quality rationales.` : ''}
 
 ---
 
 # CRITICAL REQUIREMENTS
 
 ${config.language === 'russian' ? `
-**RUSSIAN LANGUAGE GENERATION RULES:**
-- Generate names in RUSSIAN language (Cyrillic script)
-- Create INVENTED words by modifying Russian roots (like "Яндекс" from "индекс", "Озон" from "ozone")
-- Use creative morphology: prefixes, suffixes, blending (like "ВкусВилл", "Магнит", "Тинькофф")
-- Transform existing Russian words into brand names through: truncation, combination, phonetic play
-- DO NOT just translate English words - create authentic Russian brand names
-- Examples of good Russian invented names: Сбер, Билайн, МегаФон, Ситилинк, Пятёрочка
-- AVOID simple English transliterations (like "Поинт" for "Point")
-- Think like Russian brand naming: short, memorable, culturally resonant
-- **PHONETIC CHECK (P9):** Flag names with difficult consonant clusters (like "ВСТР", "НКСТВ") as ru_phonetic_risk: high
+Language: Generate names in RUSSIAN (Cyrillic script). Create authentic Russian brand names like Сбер, Билайн, МегаФон.
 ` : config.language === 'both' ? `
-**MULTILINGUAL GENERATION:**
-- Create names that work in BOTH English and Russian
-- Consider pronunciation, spelling, and cultural meaning in both languages
-- Aim for names that are easy to pronounce and remember in both markets
+Language: Names should work in BOTH English and Russian.
 ` : `
-**ENGLISH LANGUAGE GENERATION:**
-- Focus on English language names
-- Ensure easy pronunciation and spelling for English speakers
-- Consider international appeal and scalability
+Language: Focus on English language names with international appeal.
 `}
 
-${config.isCorporate || (config.communicationChannels && config.communicationChannels.includes('international')) ? `
-**🌍 MULTILINGUAL CULTURAL CHECK (Corporate/International Requirement):**
+${allWordCounts.length > 0 ? `Word count: ${allWordCounts.map(wc => wc === 'short' ? '1 word' : wc === 'medium' ? '1-2 words' : '2-3 words').join(' or ')}.` : ''}
 
-Since this is a ${config.isCorporate ? 'corporate naming project' : 'brand with international markets'}, each name MUST pass multilingual scrutiny:
-
-1. **Pronunciation Check:** Name should be pronounceable in major languages (English, Spanish, French, German, Chinese, Russian)
-2. **Negative Meaning Check:** Avoid words that:
-   - Sound like profanity in Spanish (pendejo, puta, etc.)
-   - Have negative meanings in French (mort, con, etc.)  
-   - Sound awkward in German compound formation
-   - Resemble unfortunate words in Chinese pinyin
-   - Have negative connotations in Russian
-
-3. **For each name, mentally check:**
-   - Does it sound like a bad word in any major language?
-   - Does the word root have problematic meanings elsewhere?
-   - If YES → Mark with \`intercultural_risk: high\` and explain
-
-4. **Flag explicitly if concerned:**
-   Example: "Mist" (sounds fine in English but means "manure" in German → intercultural_risk: high)
-
-**Your responsibility:** Before outputting ANY name, do a mental multilingual scan. Better to flag potential issues than miss them.
-` : ''}
-
-**WORD COUNT ENFORCEMENT:**
-${allWordCounts.map(wc => {
-  if (wc === 'short') return '- For "1 word" requirement: Generate ONLY single-word names (e.g., "Nike", "Apex", "Zenith")';
-  if (wc === 'medium') return '- For "1-2 words" requirement: Generate names with maximum 2 words (e.g., "Blue Sky", "FastTrack")';
-  if (wc === 'long') return '- For "2-3 words" requirement: Generate names with 2-3 words (e.g., "Peaceful Morning Yoga")';
-  return `- For "${wc}" requirement: Follow this specification exactly`;
-}).join('\n')}
-- STRICTLY adhere to word count - do not add extra words in subsequent generations
-- If user selected "1 word", NEVER generate 2-word names, even with feedback
-
-**UNIQUENESS & DIVERSITY:**
-- Every name must be COMPLETELY UNIQUE - no repeats from previous generations
-- Check your output: if you see duplicate names, replace them immediately
-
-**🎯 ROOT DIVERSITY RULE (CRITICAL - ENFORCED):**
-- **MAXIMUM REPETITION:** Use each root word MAX 1-2 times per generation (of ${settings.resultsPerGeneration} names)
-- **CALCULATION:** If generating 50 names → each root should appear in MAX 2 names (4% repetition)
-- **VIOLATION EXAMPLES:**
-  ❌ "ZenFlow", "ZenithPeak", "ZenCore", "ZenMind", "ZenNest" (5 names with "Zen" = VIOLATION)
-  ❌ "VedaFlow", "VedaWise", "VedaCore", "VedaPeak", "VedaLight" (5 with "Veda" = VIOLATION)
-  ❌ "PranaV", "ShantiV", "VayuV", "ShivaV", "DhyanaV" (5 with V-suffix pattern = VIOLATION)
-
-**✅ GOOD DIVERSITY:**
-  ✅ "ZenFlow", "PeakMind", "CoraLight", "NestFlow", "VerdantPath" (each root once)
-  ✅ "Lumina", "Cascade", "Ember", "Thrive", "Quantum" (all unique roots)
-
-**ENFORCEMENT CHECKLIST (Execute BEFORE final output):**
-1. Count occurrences of each root in your generated list
-2. If ANY root appears 3+ times → REPLACE excess names with different roots
-3. If using cultural vocabulary (Sanskrit/Latin) → MAX 20% of names from that culture
-4. If user LIKED a name with specific root → OK to use that root 2-3 times
-5. **AUTOMATIC REJECTION:** Names sharing 5+ identical roots in single generation
-
-**ROOT EXPANSION STRATEGY:**
-- Don't exhaust one semantic field - rotate through all 5 territories
-- Use synonym dictionaries, not word variations ("peak" → try "summit", "apex", "crest" not "peaked", "peaky")
-- Cross-linguistic exploration: If stuck on English roots → try Latin, Greek, Sanskrit, Japanese
-
-**QUALITY OVER QUANTITY:**
-- Better to generate 40 diverse names than 50 with 10 "Zen-" variants
-
-**QUALITY STANDARDS:**
-- Each name should feel like a real, professional brand
-- Avoid awkward combinations, hard-to-pronounce sequences
-- Ensure names are memorable, distinctive, and appropriate for the industry
-- Consider trademark-ability and domain availability potential`;
+Quality standards:
+- Each name must be unique and memorable
+- Use diverse roots - avoid repeating same root more than twice
+- Names should feel like real, professional brands`;
 
     return prompt;
   };
