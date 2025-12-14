@@ -605,24 +605,49 @@ export default function ConfigureStep({ onOpenSettings }: ConfigureStepProps) {
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
           {t("config.abstractionLevelTooltip")}
         </p>
-        <div className="flex items-center gap-2">
-          {(["product", "capabilities", "beliefs", "mission"] as AbstractionLevel[]).map((level) => (
-            <button
-              key={level}
-              onClick={() => updateConfig({ abstractionLevel: level })}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-                config.abstractionLevel === level
-                  ? "bg-purple-600 text-white"
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
-              }`}
-            >
-              {t(`config.abstraction.${level}`)}
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-between mt-1 px-2">
-          <span className="text-xs text-gray-400">{t("config.abstraction.concrete")}</span>
-          <span className="text-xs text-gray-400">{t("config.abstraction.abstract")}</span>
+        <div className="px-2">
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="1"
+            value={
+              config.abstractionLevel === "product" ? 0 :
+              config.abstractionLevel === "capabilities" ? 1 :
+              config.abstractionLevel === "beliefs" ? 2 : 3
+            }
+            onChange={(e) => {
+              const levels: AbstractionLevel[] = ["product", "capabilities", "beliefs", "mission"];
+              updateConfig({ abstractionLevel: levels[parseInt(e.target.value)] });
+            }}
+            className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+            style={{
+              background: `linear-gradient(to right, #9333ea 0%, #9333ea ${
+                (config.abstractionLevel === "product" ? 0 :
+                 config.abstractionLevel === "capabilities" ? 33.33 :
+                 config.abstractionLevel === "beliefs" ? 66.66 : 100)
+              }%, #e5e7eb ${
+                (config.abstractionLevel === "product" ? 0 :
+                 config.abstractionLevel === "capabilities" ? 33.33 :
+                 config.abstractionLevel === "beliefs" ? 66.66 : 100)
+              }%, #e5e7eb 100%)`
+            }}
+          />
+          <div className="flex justify-between mt-2">
+            {(["product", "capabilities", "beliefs", "mission"] as AbstractionLevel[]).map((level) => (
+              <button
+                key={level}
+                onClick={() => updateConfig({ abstractionLevel: level })}
+                className={`text-xs font-medium transition-colors ${
+                  config.abstractionLevel === level
+                    ? "text-purple-600 dark:text-purple-400"
+                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+                }`}
+              >
+                {t(`config.abstraction.${level}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

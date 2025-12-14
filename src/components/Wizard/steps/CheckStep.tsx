@@ -49,7 +49,7 @@ export default function CheckStep() {
         return name;
       });
 
-      updateCurrentTab({ generatedNames: updatedNames, isChecking: false, step: 4 });
+      updateCurrentTab({ generatedNames: updatedNames, isChecking: false, step: 5 });
     } catch (error) {
       console.error("Check failed:", error);
       setError(t("errors.checkFailed"));
