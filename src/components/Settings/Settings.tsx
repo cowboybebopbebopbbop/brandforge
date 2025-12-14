@@ -65,7 +65,7 @@ export default function Settings({ onClose }: SettingsProps) {
             <input
               type="password"
               value={settings.apiKey}
-              onChange={(e) => updateSettings({ apiKey: e.target.value })}
+              onChange={(e) => updateSettings({ apiKey: e.target.value.trim() })}
               placeholder={t("settings.apiKeyPlaceholder")}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />

@@ -281,8 +281,15 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
 // Call Google Gemini API
 async function callGemini(prompt: string, apiKey: string, count: number, model: string = "gemini-2.0-flash-exp", temperature: number = 0.9): Promise<GeneratedName[]> {
   try {
+    // Trim API key to remove any whitespace
+    const trimmedKey = apiKey?.trim();
+    
+    if (!trimmedKey) {
+      throw new Error('API key is empty. Please add your Gemini API key in Settings.');
+    }
+    
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${trimmedKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
