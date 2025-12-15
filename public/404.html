@@ -12,7 +12,8 @@
     // string into just a query string, and then redirects the browser
     // to the new url with only a query string and hash fragment
     
-    var pathSegmentsToKeep = 0;
+    // pathSegmentsToKeep = 1 keeps /brandforge/ in the path
+    var pathSegmentsToKeep = 1;
 
     var l = window.location;
     l.replace(
