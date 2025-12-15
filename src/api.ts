@@ -21,20 +21,14 @@ import {
   getDuplicateKey,
   tokenizeName,
   getRootKey,
-  buildBanSets,
-  analyzeDiversity,
-  sanitizePromptInput,
-  type LanguageMode,
-  type ValidationContext
+  type LanguageMode
 } from "./schemas";
 
+import { sanitizePromptInput } from "./services/validation";
+
 import {
-  SCHEMA_VERSION,
-  getProviderConfig,
-  MAX_TOP_UP_ATTEMPTS,
   createEmptyRejectionCounts,
-  processLLMOutput,
-  getDefaultChecks,
+  getProviderConfig,
   simpleHash,
   logTelemetry,
   type RejectionCounts,
@@ -170,17 +164,10 @@ const parseAIResponse = (
   const names: GeneratedName[] = [];
   const rejectionCounts = createEmptyRejectionCounts();
   
-  // Build validation context
-  const context: ValidationContext = {
-    languageMode: options.languageMode || 'en',
-    existingDuplicateKeys: options.existingDuplicateKeys || new Set(),
-    existingRootKeys: options.existingRootKeys || new Map(),
-    bannedTokenSet: options.bannedTokenSet || new Set(),
-    bannedNameSet: options.bannedNameSet || new Set(),
-    hasStrategyTerritories: options.hasStrategyTerritories || false,
-    validTerritoryIds: options.validTerritoryIds || new Set(),
-    maxPerRootKey: options.maxPerRootKey || 2
-  };
+  // Validation options
+  const languageMode = options.languageMode || 'en';
+  const existingDuplicateKeys = options.existingDuplicateKeys || new Set();
+  const existingRootKeys = options.existingRootKeys || new Map();
   
   // Try to parse as JSON first (primary method with Gemini 2.0 responseSchema)
   try {
@@ -216,7 +203,7 @@ const parseAIResponse = (
           type: (item.type || 'invented') as GeneratedName['type'],
           rationale: (item.rationale || (item as any).description || (item as any).explanation || '').trim(),
           selected: false,
-          category: (item.category || (item as any).category4 || (item as any).category_4) as any,
+          category: (item.category || (item as any).category4 || (item as any).category_4 || undefined) as GeneratedName['category'],
           territoryId: item.territoryId || (item as any).territory_id
         };
         
@@ -235,7 +222,7 @@ const parseAIResponse = (
         // E.6: Rationale validation (D.1-D.5)
         const rationaleResult = validateRationale(
           candidate.rationale || '', 
-          context.languageMode === 'ru' ? 'russian' : context.languageMode === 'both' ? 'both' : 'english'
+          languageMode === 'ru' ? 'russian' : languageMode === 'both' ? 'both' : 'english'
         );
         if (!rationaleResult.valid) {
           rejectionCounts.invalid_rationale++;
@@ -245,13 +232,13 @@ const parseAIResponse = (
         
         // E.7a: Deduplicate check
         const duplicateKey = getDuplicateKey(candidate.name);
-        if (context.existingDuplicateKeys.has(duplicateKey)) {
+        if (existingDuplicateKeys.has(duplicateKey)) {
           rejectionCounts.duplicate++;
           continue;
         }
         
         // E.7b: Banned name check
-        if (context.bannedNameSet.has(duplicateKey)) {
+        if (options.bannedNameSet && options.bannedNameSet.has(duplicateKey)) {
           rejectionCounts.banned++;
           continue;
         }
@@ -260,12 +247,12 @@ const parseAIResponse = (
         const tokens = tokenizeName(candidate.name);
         let isBanned = false;
         for (const token of tokens) {
-          if (context.bannedTokenSet.has(token)) {
+          if (options.bannedTokenSet && options.bannedTokenSet.has(token)) {
             isBanned = true;
             break;
           }
           // F.4: Near-variant for bans only (token >= 4 chars)
-          for (const banned of context.bannedTokenSet) {
+          for (const banned of (options.bannedTokenSet || new Set())) {
             if (banned.length >= 4 && token.startsWith(banned)) {
               isBanned = true;
               break;
@@ -280,8 +267,8 @@ const parseAIResponse = (
         
         // G.1: Root diversity check
         const rootKey = getRootKey(candidate.name);
-        const currentRootCount = context.existingRootKeys.get(rootKey) || 0;
-        if (currentRootCount >= context.maxPerRootKey) {
+        const currentRootCount = existingRootKeys.get(rootKey) || 0;
+        if (currentRootCount >= (options.maxPerRootKey || 2)) {
           rejectionCounts.diversity_exceeded++;
           continue;
         }
@@ -290,8 +277,8 @@ const parseAIResponse = (
         names.push(candidate);
         
         // Update context for subsequent validations
-        context.existingDuplicateKeys.add(duplicateKey);
-        context.existingRootKeys.set(rootKey, currentRootCount + 1);
+        existingDuplicateKeys.add(duplicateKey);
+        existingRootKeys.set(rootKey, currentRootCount + 1);
         
         // Stop if we have enough
         if (names.length >= count) break;
@@ -318,7 +305,7 @@ const parseAIResponse = (
             type: item.type || 'invented',
             rationale: item.rationale || item.description || item.explanation || '',
             selected: false,
-            category: item.category || item.category4 || item.category_4,
+            category: (item.category || item.category4 || item.category_4 || undefined) as GeneratedName['category'],
             territoryId: item.territoryId || item.territory_id
           })).filter(item => {
             const validation = validateRationale(item.rationale || '');
@@ -337,7 +324,7 @@ const parseAIResponse = (
   console.log('Parsing AI response (fallback):', text.substring(0, 500));
   
   // Text parsing fallback (LAST RESORT)
-  const textNames = parseTextResponse(text, count, context);
+  const textNames = parseTextResponse(text, count);
   return { names: textNames, rejectionCounts, parseSuccess: false };
 };
 
@@ -357,7 +344,7 @@ function isCategoryLabel(name: string): boolean {
 /**
  * Text parsing fallback for non-JSON responses
  */
-function parseTextResponse(text: string, count: number, context: ValidationContext): GeneratedName[] {
+function parseTextResponse(text: string, count: number): GeneratedName[] {
   const names: GeneratedName[] = [];
   const lines = text.split('\n');
   let currentName = '';
@@ -389,7 +376,7 @@ function parseTextResponse(text: string, count: number, context: ValidationConte
             type: currentType,
             rationale: currentRationale.trim(),
             selected: false,
-            category: currentCategory || undefined
+            category: (currentCategory || undefined) as GeneratedName['category']
           });
         } else {
           console.warn(`Skipping "${currentName}": ${validation.error}`);
@@ -449,7 +436,7 @@ function parseTextResponse(text: string, count: number, context: ValidationConte
             type: currentType,
             rationale: currentRationale.trim(),
             selected: false,
-            category: currentCategory || undefined
+            category: currentCategory ? (currentCategory as GeneratedName['category']) : undefined
           });
         }
         
@@ -489,7 +476,7 @@ function parseTextResponse(text: string, count: number, context: ValidationConte
         type: currentType,
         rationale: currentRationale.trim(),
         selected: false,
-        category: currentCategory || undefined
+        category: currentCategory ? (currentCategory as GeneratedName['category']) : undefined
       });
     } else {
       console.warn(`Skipping final name "${currentName}": ${validation.error}`);
