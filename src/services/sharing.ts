@@ -16,6 +16,7 @@ import { TabData, GeneratedName } from '../store';
 
 // Share link types
 export type SharePermission = 'view' | 'comment' | 'edit';
+export type ShareType = 'favorites-only' | 'full-project';
 
 export interface ShareLink {
   id: string;
@@ -23,7 +24,8 @@ export interface ShareLink {
   projectName: string;
   ownerId: string;
   ownerName: string;
-  permission: SharePermission;
+  shareType: ShareType;  // What content to show
+  permission: SharePermission;  // What actions are allowed
   createdAt: any;
   expiresAt?: any;
   accessCount: number;
@@ -70,6 +72,7 @@ export const createShareLink = async (
   projectName: string,
   ownerId: string,
   ownerName: string,
+  shareType: ShareType,
   permission: SharePermission,
   projectData: TabData,
   favorites: GeneratedName[]
@@ -82,6 +85,7 @@ export const createShareLink = async (
     projectName,
     ownerId,
     ownerName,
+    shareType,
     permission,
     createdAt: serverTimestamp(),
     accessCount: 0,

@@ -7,7 +7,8 @@ import {
   getUserShareLinks, 
   deleteShareLink,
   ShareLink,
-  SharePermission 
+  SharePermission,
+  ShareType 
 } from '../../services/sharing';
 
 interface ShareProjectModalProps {
@@ -21,7 +22,8 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
   const { user } = useAuth();
   const { tabs, favoritedNames } = useAppStore();
   
-  const [permission, setPermission] = useState<SharePermission>('view');
+  const [shareType, setShareType] = useState<ShareType>('favorites-only');
+  const [permission, setPermission] = useState<SharePermission>('comment');
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,7 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
         projectName,
         user.uid,
         user.displayName || 'Anonymous',
+        shareType,
         permission,
         project,
         favoritedNames.filter(f => f.tabId === projectId)
@@ -194,27 +197,86 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
 
         {/* Create New Link */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
             {t('share.createLink', 'Create Share Link')}
           </h3>
           
-          {/* Permission Selector */}
-          <div className="flex gap-2 mb-4">
-            {(['view', 'comment', 'edit'] as SharePermission[]).map(p => (
+          {/* Share Type Selector - WHO */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('share.whoAreYouSharing', '🎯 Who are you sharing with?')}
+            </label>
+            <div className="grid grid-cols-2 gap-3">
               <button
-                key={p}
-                onClick={() => setPermission(p)}
-                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
-                  permission === p
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                onClick={() => {
+                  setShareType('favorites-only');
+                  setPermission('comment');
+                }}
+                className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  shareType === 'favorites-only'
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-purple-300'
                 }`}
               >
-                {getPermissionIcon(p)}
-                <span className="text-sm">{getPermissionLabel(p)}</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">⭐</span>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {t('share.client', 'Client')}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  {t('share.clientDesc', 'Show favorites only + feedback')}
+                </div>
               </button>
-            ))}
+              
+              <button
+                onClick={() => {
+                  setShareType('full-project');
+                  setPermission('view');
+                }}
+                className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  shareType === 'full-project'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">💼</span>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {t('share.colleague', 'Colleague')}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  {t('share.colleagueDesc', 'Full project + brief + all names')}
+                </div>
+              </button>
+            </div>
           </div>
+          
+          {/* Permission Selector - WHAT THEY CAN DO */}
+          {shareType === 'full-project' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('share.whatCanTheyDo', '🔑 What can they do?')}
+              </label>
+              <div className="flex gap-2">
+                {(['view', 'edit'] as SharePermission[]).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPermission(p)}
+                    className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
+                      permission === p
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {getPermissionIcon(p)}
+                    <span className="text-sm">{getPermissionLabel(p)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             onClick={handleCreateLink}
@@ -273,11 +335,23 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
                   className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getPermissionIcon(link.permission)}
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {getPermissionLabel(link.permission)}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">
+                        {link.shareType === 'favorites-only' ? '⭐' : '💼'}
                       </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {getPermissionIcon(link.permission)}
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {link.shareType === 'favorites-only' 
+                              ? t('share.client', 'Client') 
+                              : t('share.colleague', 'Colleague')}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            · {getPermissionLabel(link.permission)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <span className="text-xs text-gray-500">
                       {link.accessCount} {t('share.views', 'views')}
