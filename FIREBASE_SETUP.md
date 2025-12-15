@@ -33,8 +33,31 @@ In Firestore, go to **Rules** tab and paste:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // User data - only owner can read/write
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Share links - owner can create/delete, anyone can read active links
+    match /shares/{shareId} {
+      allow read: if resource.data.isActive == true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.ownerId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Shared project data - anyone with link can read
+    match /shared_projects/{shareId} {
+      allow read: if true; // Public read if you have the link
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/shares/$(shareId)).data.ownerId == request.auth.uid;
+    }
+    
+    // Comments - authenticated users can create, anyone can read
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
     }
   }
 }

@@ -26,6 +26,8 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const project = tabs.find(t => t.id === projectId);
 
@@ -71,11 +73,32 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
   };
 
   const handleDeleteLink = async (shareId: string) => {
+    console.log('[ShareModal] Delete button clicked for:', shareId);
+    
+    const confirmed = window.confirm(t('share.confirmDelete', 'Are you sure you want to delete this share link?'));
+    console.log('[ShareModal] User confirmation:', confirmed);
+    
+    if (!confirmed) {
+      console.log('[ShareModal] Delete cancelled by user');
+      return;
+    }
+    
+    console.log('[ShareModal] Starting delete operation...');
+    setDeletingId(shareId);
+    setError(null);
+    
     try {
       await deleteShareLink(shareId);
+      console.log('[ShareModal] Delete successful, updating UI');
       setShareLinks(prev => prev.filter(l => l.id !== shareId));
-    } catch (error) {
-      console.error('Error deleting share link:', error);
+    } catch (error: any) {
+      console.error('[ShareModal] Delete failed:', error);
+      const errorMessage = error?.message || t('share.deleteError', 'Failed to delete share link. Please try again.');
+      setError(errorMessage);
+      alert(errorMessage); // Show alert as backup
+    } finally {
+      setDeletingId(null);
+      console.log('[ShareModal] Delete operation completed');
     }
   };
 
@@ -220,6 +243,17 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
             {t('share.activeLinks', 'Active Links')}
           </h3>
           
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center gap-2 text-red-800 dark:text-red-200 text-sm">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {error}
+              </div>
+            </div>
+          )}
+          
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -276,12 +310,24 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
                       )}
                     </button>
                     <button
-                      onClick={() => handleDeleteLink(link.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('[ShareModal] Delete button clicked!', link.id);
+                        handleDeleteLink(link.id);
+                      }}
+                      disabled={deletingId === link.id}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={t('share.deleteLink', 'Delete link')}
+                      type="button"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      {deletingId === link.id ? (
+                        <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>

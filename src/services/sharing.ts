@@ -201,8 +201,31 @@ export const subscribeToComments = (
 
 // Delete a share link
 export const deleteShareLink = async (shareId: string): Promise<void> => {
-  await deleteDoc(doc(db, 'shares', shareId));
-  await deleteDoc(doc(db, 'shared_projects', shareId));
+  console.log('[Sharing] Attempting to delete share link:', shareId);
+  
+  try {
+    // Delete the main share document
+    const shareRef = doc(db, 'shares', shareId);
+    await deleteDoc(shareRef);
+    console.log('[Sharing] Successfully deleted share document');
+    
+    // Try to delete shared project data (may not exist)
+    try {
+      const projectRef = doc(db, 'shared_projects', shareId);
+      await deleteDoc(projectRef);
+      console.log('[Sharing] Successfully deleted shared project document');
+    } catch (projectError) {
+      // It's okay if shared_projects doc doesn't exist
+      console.warn('[Sharing] Could not delete shared_projects (may not exist):', projectError);
+    }
+    
+    console.log('[Sharing] Delete operation completed successfully');
+  } catch (error: any) {
+    console.error('[Sharing] Delete error:', error);
+    console.error('[Sharing] Error code:', error?.code);
+    console.error('[Sharing] Error message:', error?.message);
+    throw new Error(`Failed to delete share link: ${error?.message || 'Unknown error'}`);
+  }
 };
 
 // Get all share links for a user

@@ -1,19 +1,59 @@
 /**
- * API utilities for BrandForge
+ * API utilities for BrandForge v1.2.1+
  * Browser-based API calls to AI providers
  * 
- * P0 Fix: Unified schema enforcement with versioned response contracts
+ * Engineering Acceptance Checklist Implementation:
+ * - Section A: LLM-only contract, system-owned wrapper
+ * - Section E: Candidate validation pipeline
+ * - Section H: Top-up with MAX_TOP_UP = 3
+ * - Section K: Multi-provider behavior (strict vs fallback)
+ * - Section L: Caching and idempotency
+ * - Section M: Input sanitization
  */
 
 import { GeneratedName } from "./store";
 import { 
   NAME_GENERATION_SCHEMA, 
-  NameGenerationResponse, 
   NameCandidate,
-  validateRationale,
   checkRootDiversity,
-  SCHEMA_VERSION
+  // New v1.2.1+ imports from validation service
+  validateRationale as validateRationaleNew,
+  getDuplicateKey,
+  tokenizeName,
+  getRootKey,
+  buildBanSets,
+  analyzeDiversity,
+  sanitizePromptInput,
+  type LanguageMode,
+  type ValidationContext
 } from "./schemas";
+
+import {
+  SCHEMA_VERSION,
+  getProviderConfig,
+  MAX_TOP_UP_ATTEMPTS,
+  createEmptyRejectionCounts,
+  processLLMOutput,
+  getDefaultChecks,
+  simpleHash,
+  logTelemetry,
+  type RejectionCounts,
+  type RunTelemetry
+} from "./services/generation";
+
+// Wrapper for backward compatibility
+function validateRationale(
+  rationale: string,
+  language: 'english' | 'russian' | 'both' = 'english'
+): { valid: boolean; error?: string; wordCount: number } {
+  const langMode: LanguageMode = language === 'russian' ? 'ru' : language === 'both' ? 'both' : 'en';
+  const result = validateRationaleNew(rationale, langMode);
+  return {
+    valid: result.valid,
+    error: result.error,
+    wordCount: result.wordCount
+  };
+}
 
 // Generate learning summary from generation history
 export async function generateLearningSummary(
@@ -107,13 +147,40 @@ export interface TrademarkCheckRequest {
 }
 
 /**
- * P0 Fix: Parse AI response with unified schema validation
- * P1 Fix: Remove fallback rationale templates - reject invalid responses
+ * v1.2.1+ Enhanced: Parse AI response with full validation pipeline
+ * Section E: Candidate validation in correct order
+ * Section D: Language-specific rationale validation
  * 
  * Returns GeneratedName[] matching our contract
  */
-const parseAIResponse = (text: string, count: number): GeneratedName[] => {
+const parseAIResponse = (
+  text: string, 
+  count: number,
+  options: {
+    languageMode?: LanguageMode;
+    existingDuplicateKeys?: Set<string>;
+    existingRootKeys?: Map<string, number>;
+    bannedTokenSet?: Set<string>;
+    bannedNameSet?: Set<string>;
+    hasStrategyTerritories?: boolean;
+    validTerritoryIds?: Set<string>;
+    maxPerRootKey?: number;
+  } = {}
+): { names: GeneratedName[]; rejectionCounts: RejectionCounts; parseSuccess: boolean } => {
   const names: GeneratedName[] = [];
+  const rejectionCounts = createEmptyRejectionCounts();
+  
+  // Build validation context
+  const context: ValidationContext = {
+    languageMode: options.languageMode || 'en',
+    existingDuplicateKeys: options.existingDuplicateKeys || new Set(),
+    existingRootKeys: options.existingRootKeys || new Map(),
+    bannedTokenSet: options.bannedTokenSet || new Set(),
+    bannedNameSet: options.bannedNameSet || new Set(),
+    hasStrategyTerritories: options.hasStrategyTerritories || false,
+    validTerritoryIds: options.validTerritoryIds || new Set(),
+    maxPerRootKey: options.maxPerRootKey || 2
+  };
   
   // Try to parse as JSON first (primary method with Gemini 2.0 responseSchema)
   try {
@@ -127,14 +194,14 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     
     const parsed = JSON.parse(jsonText);
     
-    // P0 Fix: Handle versioned response schema
+    // A.1: Handle LLM-only contract (candidates array)
     let candidates: NameCandidate[] = [];
     
     if (Array.isArray(parsed)) {
       // Legacy format: flat array
       candidates = parsed;
     } else if (parsed.candidates && Array.isArray(parsed.candidates)) {
-      // New format: NameGenerationResponse with candidates array
+      // v1.2.1+ format: { candidates: [...] }
       candidates = parsed.candidates;
     } else if (parsed.names && Array.isArray(parsed.names)) {
       // Alternative format
@@ -142,44 +209,105 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     }
     
     if (candidates.length > 0) {
-      // P0 Fix: Validate and convert to GeneratedName with unified field names
-      const validatedNames = candidates.slice(0, count).map((item: any) => {
+      // E.1-E.7: Full validation pipeline
+      for (const item of candidates.slice(0, count * 2)) { // Process extra for filtering
         const candidate: GeneratedName = {
-          name: item.name || item.title || '',
-          type: item.type || 'invented',
-          rationale: item.rationale || item.description || item.explanation || '',
+          name: (item.name || (item as any).title || '').trim(),
+          type: (item.type || 'invented') as GeneratedName['type'],
+          rationale: (item.rationale || (item as any).description || (item as any).explanation || '').trim(),
           selected: false,
-          category: item.category || item.category4 || item.category_4, // P0 Fix: handle all variants
-          territoryId: item.territoryId || item.territory_id
+          category: (item.category || (item as any).category4 || (item as any).category_4) as any,
+          territoryId: item.territoryId || (item as any).territory_id
         };
         
-        // P1 Fix: Validate rationale quality - reject empty/template rationales
-        const validation = validateRationale(candidate.rationale || '');
-        if (!validation.valid) {
-          console.warn(`Invalid rationale for "${candidate.name}": ${validation.error}`);
-          // DO NOT use fallback templates - mark as invalid
-          candidate.rationale = ''; // Will be filtered out
+        // E.1: Name non-empty, 1-50 chars
+        if (!candidate.name || candidate.name.length < 1 || candidate.name.length > 50) {
+          rejectionCounts.empty_name++;
+          continue;
         }
         
-        return candidate;
-      }).filter((item: GeneratedName) => {
-        // P1 Fix: Strict filtering - reject names with empty rationales
-        return item.name && 
-               item.name.length > 0 && 
-               item.rationale && 
-               item.rationale.length > 0;
-      });
-      
-      // P0 Fix: Check root diversity
-      const diversityIssues = checkRootDiversity(validatedNames);
-      if (diversityIssues.size > 0) {
-        console.warn('Root diversity issues detected:', Object.fromEntries(diversityIssues));
+        // E.2: Looks like a brand name check
+        if (isCategoryLabel(candidate.name)) {
+          rejectionCounts.invalid_name++;
+          continue;
+        }
+        
+        // E.6: Rationale validation (D.1-D.5)
+        const rationaleResult = validateRationale(
+          candidate.rationale || '', 
+          context.languageMode === 'ru' ? 'russian' : context.languageMode === 'both' ? 'both' : 'english'
+        );
+        if (!rationaleResult.valid) {
+          rejectionCounts.invalid_rationale++;
+          console.warn(`Invalid rationale for "${candidate.name}": ${rationaleResult.error}`);
+          continue;
+        }
+        
+        // E.7a: Deduplicate check
+        const duplicateKey = getDuplicateKey(candidate.name);
+        if (context.existingDuplicateKeys.has(duplicateKey)) {
+          rejectionCounts.duplicate++;
+          continue;
+        }
+        
+        // E.7b: Banned name check
+        if (context.bannedNameSet.has(duplicateKey)) {
+          rejectionCounts.banned++;
+          continue;
+        }
+        
+        // E.7c: Banned token check (with near-variant)
+        const tokens = tokenizeName(candidate.name);
+        let isBanned = false;
+        for (const token of tokens) {
+          if (context.bannedTokenSet.has(token)) {
+            isBanned = true;
+            break;
+          }
+          // F.4: Near-variant for bans only (token >= 4 chars)
+          for (const banned of context.bannedTokenSet) {
+            if (banned.length >= 4 && token.startsWith(banned)) {
+              isBanned = true;
+              break;
+            }
+          }
+          if (isBanned) break;
+        }
+        if (isBanned) {
+          rejectionCounts.banned++;
+          continue;
+        }
+        
+        // G.1: Root diversity check
+        const rootKey = getRootKey(candidate.name);
+        const currentRootCount = context.existingRootKeys.get(rootKey) || 0;
+        if (currentRootCount >= context.maxPerRootKey) {
+          rejectionCounts.diversity_exceeded++;
+          continue;
+        }
+        
+        // Passed all validations - add to results
+        names.push(candidate);
+        
+        // Update context for subsequent validations
+        context.existingDuplicateKeys.add(duplicateKey);
+        context.existingRootKeys.set(rootKey, currentRootCount + 1);
+        
+        // Stop if we have enough
+        if (names.length >= count) break;
       }
       
-      return validatedNames;
+      // G.3: Log diversity stats
+      const diversityIssues = checkRootDiversity(names as any);
+      if (diversityIssues.size > 0) {
+        console.log('[Diversity] Root distribution:', Object.fromEntries(diversityIssues));
+      }
+      
+      return { names, rejectionCounts, parseSuccess: true };
     }
   } catch (e) {
     // JSON parsing failed, try to extract JSON from text
+    rejectionCounts.parse_error++;
     const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/m);
     if (jsonMatch) {
       try {
@@ -193,12 +321,11 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
             category: item.category || item.category4 || item.category_4,
             territoryId: item.territoryId || item.territory_id
           })).filter(item => {
-            // P1 Fix: Strict validation
             const validation = validateRationale(item.rationale || '');
             return item.name && item.name.length > 0 && validation.valid;
           });
           
-          return validatedNames;
+          return { names: validatedNames, rejectionCounts, parseSuccess: true };
         }
       } catch {
         // Continue to text parsing
@@ -206,11 +333,32 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     }
   }
   
-  console.warn('P1: JSON parsing failed, falling back to text parsing (lower quality)');
-  console.log('Parsing AI response (fallback to text parsing):', text.substring(0, 500));
+  console.warn('[K.2] JSON parsing failed, using fallback path (lower quality)');
+  console.log('Parsing AI response (fallback):', text.substring(0, 500));
   
-  // P1 Fix: Text parsing fallback (LAST RESORT - should rarely be needed with responseSchema)
-  // DO NOT use template rationales - reject incomplete responses
+  // Text parsing fallback (LAST RESORT)
+  const textNames = parseTextResponse(text, count, context);
+  return { names: textNames, rejectionCounts, parseSuccess: false };
+};
+
+/**
+ * E.2: Check if name is a category label
+ */
+function isCategoryLabel(name: string): boolean {
+  const lower = name.toLowerCase();
+  const labels = [
+    'direct', 'functional', 'emotional', 'aspirational', 'abstract', 'constructed',
+    'informing', 'image_informing', 'image', 'abstract_constructed',
+    'invented', 'compound', 'acronym', 'descriptive', 'foreign'
+  ];
+  return labels.includes(lower) || /^[a-z]+\/[a-z]+$/i.test(name);
+}
+
+/**
+ * Text parsing fallback for non-JSON responses
+ */
+function parseTextResponse(text: string, count: number, context: ValidationContext): GeneratedName[] {
+  const names: GeneratedName[] = [];
   const lines = text.split('\n');
   let currentName = '';
   let currentType: GeneratedName['type'] = 'invented';
@@ -224,7 +372,7 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
     // Skip empty lines, markdown artifacts, and preamble text
     if (!line || line === '---' || line.startsWith('```')) continue;
     
-    // Skip preamble/intro sentences (contains common intro phrases)
+    // Skip preamble/intro sentences
     if (line.match(/^(here are|here's|i've generated|below are|following are|these are)/i)) continue;
     if (line.match(/adhering to|based on|according to|with the following/i) && line.length > 40) continue;
     
@@ -235,7 +383,6 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
       if (currentName && hasValidName && currentName.length > 1) {
         const validation = validateRationale(currentRationale.trim());
         
-        // P1 Fix: Only add if rationale is valid (no template fallbacks)
         if (validation.valid) {
           names.push({
             name: currentName,
@@ -359,12 +506,29 @@ const parseAIResponse = (text: string, count: number): GeneratedName[] => {
   );
   
   return validNames.slice(0, count);
-};
+}
 
-// Call Google Gemini API
-async function callGemini(prompt: string, apiKey: string, count: number, model: string = "gemini-2.0-flash-exp", temperature: number = 0.9): Promise<GeneratedName[]> {
+/**
+ * K.1: Gemini - Strict JSON schema path (guaranteed structured output)
+ */
+async function callGemini(
+  prompt: string, 
+  apiKey: string, 
+  count: number, 
+  model: string = "gemini-2.0-flash-exp", 
+  temperature: number = 0.9,
+  options: {
+    languageMode?: LanguageMode;
+    existingDuplicateKeys?: Set<string>;
+    existingRootKeys?: Map<string, number>;
+    bannedTokenSet?: Set<string>;
+    bannedNameSet?: Set<string>;
+    maxPerRootKey?: number;
+  } = {}
+): Promise<{ names: GeneratedName[]; rejectionCounts: RejectionCounts; parseSuccess: boolean }> {
+  const providerConfig = getProviderConfig('gemini');
+  
   try {
-    // Trim API key to remove any whitespace
     const trimmedKey = apiKey?.trim();
     
     if (!trimmedKey) {
@@ -384,8 +548,8 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
             temperature: temperature,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 2048,
-            // P0 Fix: Use versioned response schema
+            maxOutputTokens: 4096, // Increased for larger batches
+            // K.1: Gemini strict schema path
             responseMimeType: "application/json",
             responseSchema: NAME_GENERATION_SCHEMA
           }
@@ -406,7 +570,8 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
       throw new Error('Gemini returned empty response');
     }
     
-    return parseAIResponse(text, count);
+    console.log(`[K.1] Gemini ${providerConfig.tier}: received ${text.length} chars`);
+    return parseAIResponse(text, count, options);
   } catch (error: any) {
     if (error.message?.includes('Gemini API error')) {
       throw error;
@@ -415,8 +580,25 @@ async function callGemini(prompt: string, apiKey: string, count: number, model: 
   }
 }
 
-// Call OpenAI API
-async function callOpenAI(prompt: string, apiKey: string, count: number, temperature: number = 0.9): Promise<GeneratedName[]> {
+/**
+ * K.2: OpenAI - Fallback provider path (best-effort, fewer top-up attempts)
+ */
+async function callOpenAI(
+  prompt: string, 
+  apiKey: string, 
+  count: number, 
+  temperature: number = 0.9,
+  options: {
+    languageMode?: LanguageMode;
+    existingDuplicateKeys?: Set<string>;
+    existingRootKeys?: Map<string, number>;
+    bannedTokenSet?: Set<string>;
+    bannedNameSet?: Set<string>;
+    maxPerRootKey?: number;
+  } = {}
+): Promise<{ names: GeneratedName[]; rejectionCounts: RejectionCounts; parseSuccess: boolean }> {
+  const providerConfig = getProviderConfig('openai');
+  
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -427,11 +609,12 @@ async function callOpenAI(prompt: string, apiKey: string, count: number, tempera
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a professional brand naming expert.' },
+          { role: 'system', content: 'You are a professional brand naming expert. Always respond with valid JSON containing a "candidates" array.' },
           { role: 'user', content: prompt }
         ],
         temperature: temperature,
-        max_tokens: 2000
+        max_tokens: 4000,
+        response_format: { type: "json_object" } // K.2: Request JSON mode
       })
     });
     
@@ -448,7 +631,8 @@ async function callOpenAI(prompt: string, apiKey: string, count: number, tempera
       throw new Error('OpenAI returned empty response');
     }
     
-    return parseAIResponse(text, count);
+    console.log(`[K.2] OpenAI ${providerConfig.tier}: received ${text.length} chars`);
+    return parseAIResponse(text, count, options);
   } catch (error: any) {
     if (error.message?.includes('OpenAI API error')) {
       throw error;
@@ -457,8 +641,25 @@ async function callOpenAI(prompt: string, apiKey: string, count: number, tempera
   }
 }
 
-// Call Anthropic Claude API
-async function callClaude(prompt: string, apiKey: string, count: number, temperature: number = 0.9): Promise<GeneratedName[]> {
+/**
+ * K.2: Claude - Fallback provider path (best-effort, fewer top-up attempts)
+ */
+async function callClaude(
+  prompt: string, 
+  apiKey: string, 
+  count: number, 
+  temperature: number = 0.9,
+  options: {
+    languageMode?: LanguageMode;
+    existingDuplicateKeys?: Set<string>;
+    existingRootKeys?: Map<string, number>;
+    bannedTokenSet?: Set<string>;
+    bannedNameSet?: Set<string>;
+    maxPerRootKey?: number;
+  } = {}
+): Promise<{ names: GeneratedName[]; rejectionCounts: RejectionCounts; parseSuccess: boolean }> {
+  const providerConfig = getProviderConfig('claude');
+  
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -469,10 +670,10 @@ async function callClaude(prompt: string, apiKey: string, count: number, tempera
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages: [{
           role: 'user',
-          content: prompt
+          content: prompt + '\n\nIMPORTANT: Respond ONLY with valid JSON containing a "candidates" array. No other text.'
         }],
         temperature: temperature
       })
@@ -491,7 +692,8 @@ async function callClaude(prompt: string, apiKey: string, count: number, tempera
       throw new Error('Claude returned empty response');
     }
     
-    return parseAIResponse(text, count);
+    console.log(`[K.2] Claude ${providerConfig.tier}: received ${text.length} chars`);
+    return parseAIResponse(text, count, options);
   } catch (error: any) {
     if (error.message?.includes('Claude API error')) {
       throw error;
@@ -500,31 +702,153 @@ async function callClaude(prompt: string, apiKey: string, count: number, tempera
   }
 }
 
-// API for generating names
+/**
+ * v1.2.1+ Enhanced generateNames with top-up loop and telemetry
+ * Section H: Count Guarantee + Top-Up (correct loop, transparent meta)
+ */
 export async function generateNames(
   request: GenerationRequest,
   apiKey: string,
   provider: string,
   geminiModel?: string,
-  temperature?: number // Add temperature parameter
+  temperature?: number,
+  options: {
+    languageMode?: LanguageMode;
+    existingNames?: string[];
+    bannedTokens?: string[];
+    bannedNames?: string[];
+    maxPerRootKey?: number;
+    projectId?: string;
+    generationCount?: number;
+  } = {}
 ): Promise<GeneratedName[]> {
   const prompt = request.full_prompt || `Generate ${request.count} creative brand names for a ${request.industry} company. Keywords: ${request.keywords.join(', ')}. Tone: ${request.tones.join(', ')}. Length: ${request.lengths.join(', ')}. ${request.custom_instructions}`;
   
-  try {
-    switch (provider.toLowerCase()) {
-      case 'gemini':
-        return await callGemini(prompt, apiKey, request.count, geminiModel || "gemini-2.0-flash-exp", temperature);
-      case 'openai':
-        return await callOpenAI(prompt, apiKey, request.count);
-      case 'claude':
-        return await callClaude(prompt, apiKey, request.count);
-      default:
-        throw new Error(`Unknown provider: ${provider}`);
-    }
-  } catch (error) {
-    console.error('AI API error:', error);
-    throw error;
+  // M.1: Sanitize prompt
+  const sanitized = sanitizePromptInput(prompt);
+  const finalPrompt = sanitized.sanitized;
+  if (sanitized.wasModified) {
+    console.warn('[M.1] Input sanitized:', sanitized.issues);
   }
+  
+  // Build validation context
+  const existingDuplicateKeys = new Set<string>();
+  const existingRootKeys = new Map<string, number>();
+  
+  // Add existing names to dedupe set
+  for (const name of options.existingNames || []) {
+    existingDuplicateKeys.add(getDuplicateKey(name));
+  }
+  
+  const bannedTokenSet = new Set<string>(options.bannedTokens || []);
+  const bannedNameSet = new Set<string>(options.bannedNames || []);
+  
+  const providerConfig = getProviderConfig(provider);
+  const maxAttempts = providerConfig.maxTopUpAttempts;
+  
+  const allNames: GeneratedName[] = [];
+  let totalRejections = createEmptyRejectionCounts();
+  let attempt = 0;
+  let parseSuccessCount = 0;
+  let totalAttempts = 0;
+  
+  const languageMode: LanguageMode = 
+    request.language === 'russian' ? 'ru' : 
+    request.language === 'both' ? 'both' : 'en';
+  
+  const callOptions = {
+    languageMode,
+    existingDuplicateKeys,
+    existingRootKeys,
+    bannedTokenSet,
+    bannedNameSet,
+    maxPerRootKey: options.maxPerRootKey || 2
+  };
+  
+  // H.2: Top-up loop with MAX_TOP_UP = 3
+  while (allNames.length < request.count && attempt < maxAttempts) {
+    const needed = request.count - allNames.length;
+    const buffer = Math.ceil(needed * 0.15); // 15% buffer
+    const requestCount = needed + buffer;
+    
+    try {
+      let result: { names: GeneratedName[]; rejectionCounts: RejectionCounts; parseSuccess: boolean };
+      
+      switch (provider.toLowerCase()) {
+        case 'gemini':
+          result = await callGemini(finalPrompt, apiKey, requestCount, geminiModel || "gemini-2.0-flash-exp", temperature || 0.9, callOptions);
+          break;
+        case 'openai':
+          result = await callOpenAI(finalPrompt, apiKey, requestCount, temperature || 0.9, callOptions);
+          break;
+        case 'claude':
+          result = await callClaude(finalPrompt, apiKey, requestCount, temperature || 0.9, callOptions);
+          break;
+        default:
+          throw new Error(`Unknown provider: ${provider}`);
+      }
+      
+      totalAttempts++;
+      if (result.parseSuccess) parseSuccessCount++;
+      
+      // Add valid names
+      for (const name of result.names) {
+        if (allNames.length >= request.count) break;
+        allNames.push(name);
+        
+        // Update context for next iteration
+        existingDuplicateKeys.add(getDuplicateKey(name.name));
+        const rootKey = getRootKey(name.name);
+        existingRootKeys.set(rootKey, (existingRootKeys.get(rootKey) || 0) + 1);
+      }
+      
+      // Accumulate rejection counts
+      for (const [key, value] of Object.entries(result.rejectionCounts)) {
+        (totalRejections as any)[key] += value;
+      }
+      
+    } catch (error) {
+      console.error(`[H.2] Attempt ${attempt + 1} failed:`, error);
+      totalRejections.parse_error++;
+    }
+    
+    attempt++;
+    
+    // H.2: Loop condition uses attempt < MAX_TOP_UP (no off-by-one)
+    if (attempt >= maxAttempts && allNames.length < request.count) {
+      console.warn(`[H.3] Shortfall after ${attempt} attempts: ${allNames.length}/${request.count}`);
+    }
+  }
+  
+  // P.1: Log telemetry
+  const telemetry: RunTelemetry = {
+    runId: `run-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    timestamp: Date.now(),
+    promptHash: simpleHash(finalPrompt),
+    constraintHash: simpleHash(JSON.stringify(callOptions)),
+    provider,
+    model: geminiModel || 'default',
+    temperature: temperature || 0.9,
+    requestedCount: request.count,
+    returnedCount: allNames.length,
+    topUpAttempts: attempt,
+    rejectionCounts: totalRejections,
+    bucketFillRates: {}, // Would need bucket info
+    rootKeyStats: {
+      unique: existingRootKeys.size,
+      maxPerRoot: Math.max(...existingRootKeys.values(), 0),
+      topRoots: Array.from(existingRootKeys.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+    },
+    parseSuccessRate: totalAttempts > 0 ? parseSuccessCount / totalAttempts : 0,
+    rationalePassRate: allNames.length / (allNames.length + totalRejections.invalid_rationale),
+    duplicateRate: totalRejections.duplicate / (allNames.length + totalRejections.duplicate)
+  };
+  
+  logTelemetry(telemetry);
+  
+  return allNames;
 }
 
 // Mock trademark checking (real implementation would need a backend proxy due to CORS)

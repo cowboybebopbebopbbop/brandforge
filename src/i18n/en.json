@@ -499,7 +499,9 @@
     "views": "views",
     "copied": "Copied!",
     "copyLink": "Copy Link",
-    "deleteLink": "Delete Link"
+    "deleteLink": "Delete Link",
+    "confirmDelete": "Are you sure you want to delete this share link?",
+    "deleteError": "Failed to delete share link. Please try again."
   },
   "availability": {
     "title": "Availability Check",

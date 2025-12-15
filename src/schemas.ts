@@ -1,18 +1,61 @@
 /**
  * Versioned API Response Schemas for BrandForge
  * 
- * v1.2.1 Fixes:
- * - P0-A: All 3 contracts documented
- * - P0-B: camelCase everywhere
- * - P0-C: requestedCount/returnedCount in meta
- * - P1-E: Rationale word counts (EN: 18-45, RU: 14-35)
- * - P1-D: Root extraction uses tokens only (no prefix derivatives)
+ * v1.2.1+ Engineering Acceptance Checklist Implementation:
+ * - Section A: LLM-only output contract (no runId, no schemaVersion, no meta, no checks)
+ * - Section B: Canonical normalization keys via validation.ts
+ * - Section C: Root/Token rules via validation.ts
+ * - Section D: Language-specific rationale validation
+ * - Section E: Candidate validation pipeline
+ * - Section F: Ban lists & near-variant strategy
+ * - Section G: Diversity enforcement (max 2 per rootKey for 50 names)
+ * - Section J: Checks are post-processed only, never from model
  */
 
 import { NameCategory4, NameChecks } from './store';
 
-// Schema version for compatibility tracking
-export const SCHEMA_VERSION = '1.2.0';
+// Re-export validation utilities for backward compatibility
+export { 
+  normalizeNameForCompare,
+  getDuplicateKey,
+  tokenizeName,
+  getRootKey,
+  getTailToken,
+  validateRationale,
+  validateCandidate,
+  buildBanSets,
+  analyzeDiversity,
+  sanitizePromptInput,
+  hasSuspiciousContent,
+  type LanguageMode,
+  type RationaleValidation,
+  type ValidatedCandidate,
+  type ValidationContext,
+  type DiversityStats,
+  type BanListConfig,
+  type SanitizationResult
+} from './services/validation';
+
+// Re-export generation utilities
+export {
+  SCHEMA_VERSION,
+  type LLMOutputContract,
+  type LLMCandidate,
+  type SystemAPIResponse,
+  type ProcessedCandidate,
+  type GenerationMeta,
+  type ShortfallReasonCode,
+  type RejectionCounts,
+  getDefaultChecks,
+  getProviderConfig,
+  createBuckets,
+  calculateTopUpRequest,
+  MAX_TOP_UP_ATTEMPTS,
+  logTelemetry
+} from './services/generation';
+
+// Keep local schema version for backward compatibility
+export const LOCAL_SCHEMA_VERSION = '1.2.1';
 
 /**
  * Strategy Synthesis Response
@@ -166,155 +209,75 @@ export const ASSOCIATION_RESPONSE_SCHEMA = {
 };
 
 /**
- * NAME GENERATION SCHEMA (Primary - most important)
+ * NAME GENERATION SCHEMA (LLM-Only Contract)
  * 
- * P0 Fix: Complete and consistent field definitions
+ * v1.2.1+ Section A: LLM output is "LLM-only"
+ * - NO runId (system-generated)
+ * - NO schemaVersion (system-controlled)
+ * - NO meta (system-owned)
+ * - NO checks (post-processed)
+ * 
+ * Required: candidates[] only
  */
 export const NAME_GENERATION_SCHEMA = {
   type: 'object' as const,
   properties: {
-    schemaVersion: { type: 'string' as const },
-    runId: { type: 'string' as const },
+    // A.1: LLM output contains ONLY candidates array
     candidates: {
       type: 'array' as const,
       items: {
         type: 'object' as const,
         properties: {
+          // E.1: Name 1-50 chars
           name: { 
             type: 'string' as const,
             minLength: 1,
             maxLength: 50
           },
+          // E.3: Type in AI enum only
           type: { 
             type: 'string' as const,
             enum: ['invented', 'compound', 'acronym', 'descriptive', 'foreign']
           },
+          // E.4: Category required
           category: {
             type: 'string' as const,
             enum: ['informing', 'image_informing', 'image', 'abstract_constructed']
           },
+          // D.3: 50-400 chars secondary safety
           rationale: { 
             type: 'string' as const,
-            minLength: 50,  // ~10-15 words minimum
-            maxLength: 400  // ~60-80 words maximum
+            minLength: 50,
+            maxLength: 400
           },
+          // E.5: territoryId optional (required validation done post-parse)
           territoryId: { type: 'string' as const }
         },
         required: ['name', 'type', 'category', 'rationale']
       },
       minItems: 1
-    },
-    meta: {
-      type: 'object' as const,
-      properties: {
-        requestedCount: { type: 'number' as const },  // P0-C
-        returnedCount: { type: 'number' as const },   // P0-C
-        topUpAttempts: { type: 'number' as const },   // P0-C
-        generationCount: { type: 'number' as const },
-        feedbackApplied: { type: 'boolean' as const },
-        territoriesUsed: {
-          type: 'array' as const,
-          items: { type: 'string' as const }
-        }
-      }
     }
   },
-  required: ['schemaVersion', 'candidates']
+  // A.1: Only candidates is required from LLM
+  required: ['candidates']
 };
 
 /**
- * Validation helpers
- */
-export function validateRationale(
-  rationale: string, 
-  language: 'english' | 'russian' | 'both' = 'english'
-): { valid: boolean; error?: string; wordCount: number } {
-  if (!rationale || rationale.trim().length === 0) {
-    return { valid: false, error: 'Rationale is empty', wordCount: 0 };
-  }
-  
-  // P1-E: Language-specific word count validation
-  const words = rationale.trim().split(/\s+/);
-  const wordCount = words.length;
-  
-  // P1-E: Standardized word counts
-  // EN: 18-45 words (standard commercial range)
-  // RU: 14-35 words (denser language)
-  const minWords = language === 'russian' ? 14 : 18;
-  const maxWords = language === 'russian' ? 35 : 45;
-  
-  if (wordCount < minWords) {
-    return { valid: false, error: `Rationale too short (${wordCount} words, need ${minWords}+ words)`, wordCount };
-  }
-  
-  if (wordCount > maxWords) {
-    return { valid: false, error: `Rationale too long (${wordCount} words, keep under ${maxWords} words)`, wordCount };
-  }
-  
-  // Check for template fragments
-  const suspiciousPatterns = [
-    /^(comb|creative|good|nice|suggestion)$/i,
-    /^A (invented|compound|acronym|descriptive|foreign) brand name$/i
-  ];
-  
-  const normalized = rationale.trim().toLowerCase();
-  for (const pattern of suspiciousPatterns) {
-    if (pattern.test(normalized)) {
-      return { valid: false, error: 'Rationale appears to be a template fragment', wordCount };
-    }
-  }
-  
-  return { valid: true, wordCount };
-}
-
-/**
- * P0 Fix: Proper tokenization for diversity checking
- * Replaces naive "first 4-6 characters" approach
- */
-export function tokenizeName(name: string): string[] {
-  // Split by spaces, hyphens, underscores, camelCase
-  const tokens: string[] = [];
-  
-  // Handle camelCase and spaces/hyphens
-  const parts = name
-    .replace(/([a-z])([A-Z])/g, '$1 $2')  // Split camelCase
-    .split(/[\s\-_\.]+/);                  // Split by separators
-  
-  for (const part of parts) {
-    if (part.length > 0) {
-      tokens.push(part.toLowerCase());
-    }
-  }
-  
-  return tokens;
-}
-
-/**
- * P1-D Fix: Better root/stem extraction
- * Uses TOKENS ONLY for batch validation (not prefix derivatives)
- * Prefix matching is reserved for drift/overuse analytics only
- */
-export function extractRoots(name: string): string[] {
-  // P1-D: Return tokens only, no prefix derivatives
-  // This prevents false positives on short words
-  return tokenizeName(name);
-}
-
-/**
- * Check root diversity across a set of names
- * Returns names grouped by shared roots
+ * Legacy checkRootDiversity for backward compatibility
+ * @deprecated Use analyzeDiversity from services/validation.ts instead
  */
 export function checkRootDiversity(names: NameCandidate[]): Map<string, string[]> {
+  const { tokenizeName } = require('./services/validation');
   const rootToNames = new Map<string, string[]>();
   
   for (const candidate of names) {
-    const roots = extractRoots(candidate.name);
+    const tokens = tokenizeName(candidate.name);
     
-    for (const root of roots) {
-      if (!rootToNames.has(root)) {
-        rootToNames.set(root, []);
+    for (const token of tokens) {
+      if (!rootToNames.has(token)) {
+        rootToNames.set(token, []);
       }
-      rootToNames.get(root)!.push(candidate.name);
+      rootToNames.get(token)!.push(candidate.name);
     }
   }
   
@@ -322,7 +285,7 @@ export function checkRootDiversity(names: NameCandidate[]): Map<string, string[]
   const duplicates = new Map<string, string[]>();
   for (const [root, namesList] of rootToNames.entries()) {
     if (namesList.length > 1) {
-      duplicates.set(root, [...new Set(namesList)]); // Deduplicate
+      duplicates.set(root, [...new Set(namesList)]);
     }
   }
   
