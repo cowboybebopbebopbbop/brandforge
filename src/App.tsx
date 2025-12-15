@@ -10,6 +10,7 @@ import Library from "./components/Library/Library";
 import SetupBanner from "./components/SetupBanner/SetupBanner";
 import OnboardingModal from "./components/OnboardingModal/OnboardingModal";
 import ProjectsView from "./components/ProjectsView/ProjectsView";
+import SharedProjectView from "./components/SharedProjectView/SharedProjectView";
 import { useFirebaseSync } from "./hooks/useFirebaseSync";
 
 function AppContent() {
@@ -19,7 +20,12 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const { settings, updateSettings, currentView } = useAppStore();
   
-  // Enable Firebase sync
+  // Check if this is a shared project view
+  const pathname = window.location.pathname;
+  const isShareView = pathname.startsWith('/share/');
+  const shareId = isShareView ? pathname.replace('/share/', '') : null;
+  
+  // Enable Firebase sync (skip for share views)
   useFirebaseSync();
 
   // Show onboarding on first visit
@@ -36,6 +42,11 @@ function AppContent() {
     updateSettings({ language: newLang });
     i18n.changeLanguage(newLang);
   };
+
+  // If this is a share view, render SharedProjectView instead
+  if (isShareView && shareId) {
+    return <SharedProjectView shareId={shareId} />;
+  }
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${settings.theme === 'dark' ? 'dark' : ''}`}>

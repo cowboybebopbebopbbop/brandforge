@@ -501,7 +501,19 @@
     "copyLink": "Copy Link",
     "deleteLink": "Delete Link",
     "confirmDelete": "Are you sure you want to delete this share link?",
-    "deleteError": "Failed to delete share link. Please try again."
+    "deleteError": "Failed to delete share link. Please try again.",
+    "loading": "Loading shared project...",
+    "notFound": "Shared project not found or has been deleted",
+    "inactive": "This share link has been deactivated",
+    "loadError": "Failed to load shared project",
+    "oops": "Oops!",
+    "goHome": "Go to BrandForge",
+    "sharedBy": "Shared by",
+    "createYourOwn": "Create your own",
+    "noNames": "No names in this project",
+    "favorited": "Favorited",
+    "accessCount": "Viewed",
+    "times": "times"
   },
   "availability": {
     "title": "Availability Check",
