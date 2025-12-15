@@ -22,8 +22,8 @@ function AppContent() {
   
   // Check if this is a shared project view
   const pathname = window.location.pathname;
-  const isShareView = pathname.startsWith('/share/');
-  const shareId = isShareView ? pathname.replace('/share/', '') : null;
+  const isShareView = pathname.includes('/share/');
+  const shareId = isShareView ? pathname.split('/share/')[1] : null;
   
   // Enable Firebase sync (skip for share views)
   useFirebaseSync();

@@ -103,7 +103,7 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
   };
 
   const handleCopyLink = (shareId: string) => {
-    const url = `${window.location.origin}/share/${shareId}`;
+    const url = `${window.location.origin}/brandforge/share/${shareId}`;
     navigator.clipboard.writeText(url);
     setCopiedId(shareId);
     setTimeout(() => setCopiedId(null), 2000);
@@ -288,7 +288,7 @@ export default function ShareProjectModal({ projectId, projectName, onClose }: S
                     <input
                       type="text"
                       readOnly
-                      value={`${window.location.origin}/share/${link.id}`}
+                      value={`${window.location.origin}/brandforge/share/${link.id}`}
                       className="flex-1 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300"
                     />
                     <button
