@@ -388,6 +388,10 @@ Quality standards:
   const { config, generatedNames, isGenerating } = currentTab;
 
   const startGeneration = async () => {
+    console.log('[GenerateStep] Starting generation...');
+    console.log('[GenerateStep] API Key exists:', !!settings.apiKey);
+    console.log('[GenerateStep] Provider:', settings.provider);
+    
     setError(null);
     updateCurrentTab({ isGenerating: true, generatedNames: [] });
 
@@ -407,6 +411,7 @@ Quality standards:
       // Generate the prompt with current feedback settings
       const promptToUse = isPromptEdited ? customPrompt : buildDefaultPrompt(useFeedback);
       
+      console.log('[GenerateStep] Calling API...');
       const names = await generateNames(
         {
           industry: config.industry,
@@ -530,7 +535,12 @@ Quality standards:
         }
       }
     } catch (error: any) {
-      console.error("Generation failed:", error);
+      console.error("[GenerateStep] Generation failed:", error);
+      console.error("[GenerateStep] Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        response: error?.response
+      });
       const errorMessage = error?.message || t("errors.generationFailed");
       setError(`${t("errors.generationFailed")}: ${errorMessage}`);
       updateCurrentTab({ isGenerating: false });

@@ -709,6 +709,8 @@ export async function generateNames(
     generationCount?: number;
   } = {}
 ): Promise<GeneratedName[]> {
+  console.log('[API] generateNames called:', { provider, count: request.count, hasApiKey: !!apiKey });
+  
   const prompt = request.full_prompt || `Generate ${request.count} creative brand names for a ${request.industry} company. Keywords: ${request.keywords.join(', ')}. Tone: ${request.tones.join(', ')}. Length: ${request.lengths.join(', ')}. ${request.custom_instructions}`;
   
   // M.1: Sanitize prompt
